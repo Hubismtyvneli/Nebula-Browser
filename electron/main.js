@@ -81,9 +81,10 @@ async function createWindow() {
     title: "Nebula Browser",
     backgroundColor: "#08080A",
     // macOS: hiddenInset gives us traffic lights + a draggable title bar area
-    // Windows/Linux: frameless — our React chrome bar provides the drag region + window controls
-    titleBarStyle: "hiddenInset",
-    frame: process.platform === "darwin",
+    // Windows: hidden (removes native title bar but keeps OS chrome for resize)
+    // Linux: frameless (custom title bar)
+    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "hidden",
+    frame: false,
     trafficLightPosition: { x: 12, y: 14 },
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),

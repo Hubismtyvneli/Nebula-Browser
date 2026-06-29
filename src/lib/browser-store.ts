@@ -13,6 +13,11 @@ export interface Tab {
   historyIndex: number;
   isIncognito?: boolean;
   createdAt: number;
+  /** Increments on every USER-initiated navigation (omnibox submit, bookmark click,
+   *  quick-link click). Used as a React key for the webview so it remounts with
+   *  the new URL. Internal link clicks inside the webview do NOT bump this —
+   *  they update `url` silently via setState without remounting. */
+  navEpoch: number;
 }
 
 export interface Bookmark {
@@ -130,6 +135,7 @@ function makeNewTab(id?: string): Tab {
     history: [""],
     historyIndex: 0,
     createdAt: INIT_TIME,
+    navEpoch: 0,
   };
 }
 
@@ -200,6 +206,7 @@ export const useBrowserStore = create<BrowserState>()(
               status: "loading",
               history: truncatedHistory,
               historyIndex: truncatedHistory.length - 1,
+              navEpoch: t.navEpoch + 1,
             };
           }),
         })),
@@ -209,7 +216,7 @@ export const useBrowserStore = create<BrowserState>()(
             if (t.id !== id || t.historyIndex <= 0) return t;
             const idx = t.historyIndex - 1;
             const url = t.history[idx];
-            return { ...t, historyIndex: idx, url, title: url ? deriveTitle(url) : NTP_TITLE, status: url ? "loading" : "idle" };
+            return { ...t, historyIndex: idx, url, title: url ? deriveTitle(url) : NTP_TITLE, status: url ? "loading" : "idle", navEpoch: t.navEpoch + 1 };
           }),
         })),
       goForward: (id) =>
@@ -218,7 +225,7 @@ export const useBrowserStore = create<BrowserState>()(
             if (t.id !== id || t.historyIndex >= t.history.length - 1) return t;
             const idx = t.historyIndex + 1;
             const url = t.history[idx];
-            return { ...t, historyIndex: idx, url, title: url ? deriveTitle(url) : NTP_TITLE, status: url ? "loading" : "idle" };
+            return { ...t, historyIndex: idx, url, title: url ? deriveTitle(url) : NTP_TITLE, status: url ? "loading" : "idle", navEpoch: t.navEpoch + 1 };
           }),
         })),
       reloadTab: (id) =>
@@ -245,6 +252,7 @@ export const useBrowserStore = create<BrowserState>()(
           createdAt: Date.now(),
           history: [...src.history],
           status: "idle",
+          navEpoch: 0,
         };
         const idx = get().tabs.findIndex((t) => t.id === id);
         const next = [...get().tabs];

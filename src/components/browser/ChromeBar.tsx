@@ -12,14 +12,25 @@ export function ChromeBar() {
   const { resolvedTheme, setTheme } = useTheme();
 
   return (
-    <div className="app-drag relative z-30 flex h-11 items-stretch gap-1 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] backdrop-blur-xl">
-      <div className="flex items-center">
+    <div
+      className="app-drag relative z-30 flex h-11 items-stretch gap-1 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] backdrop-blur-xl"
+      style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+    >
+      <div className="no-drag flex items-center" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
         <TrafficLights />
       </div>
 
-      <TabStrip />
+      <div className="no-drag" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+        <TabStrip />
+      </div>
 
-      <div className="flex items-center gap-1 pr-2 no-drag">
+      {/* Spacer in the middle that remains draggable (gives users a clear grab area) */}
+      <div
+        className="flex-1"
+        style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+      />
+
+      <div className="no-drag flex items-center gap-1 pr-2" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
         <motion.button
           type="button"
           onClick={() => toggleCommandPalette(true)}

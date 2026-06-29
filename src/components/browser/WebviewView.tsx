@@ -14,32 +14,40 @@ import {
 
 interface WebviewViewProps {
   tabId: string;
+  /** The initial URL to load. Changes to this prop are IGNORED after mount
+   *  to prevent reload feedback loops (webview navigates → store updates URL →
+   *  prop changes → webview re-loads → infinite loop). */
   url: string;
   initialTitle: string;
 }
 
 /**
  * Renders a real, interactive web page using Electron's <webview> tag.
- * Syncs navigation events (loading, title, URL changes) back to the tab store.
  *
- * In a regular browser (not Electron), this component is never rendered —
- * the Viewport falls back to <PagePreview> instead.
+ * CRITICAL: The `src` attribute is set ONCE on mount. We never update it in
+ * response to prop changes — that would cause a reload feedback loop because
+ * the webview's own navigation events update the tab store, which would then
+ * flow back as a new `url` prop and re-trigger the load.
+ *
+ * When the user types a NEW url in the omnibox, the TabContent component
+ * unmounts this WebviewView (keyed by tab id + url) and mounts a fresh one
+ * with the new src.
  */
 export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
   const webviewRef = useRef<WebViewElement>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Track the last URL we synced to the store, so we don't sync the same one twice
+  const lastSyncedUrl = useRef<string>("");
 
   const setTabStatus = useBrowserStore((s) => s.setTabStatus);
   const setTabTitle = useBrowserStore((s) => s.setTabTitle);
-  const navigateTab = useBrowserStore((s) => s.navigateTab);
   const isAISidebarOpen = useBrowserStore((s) => s.isAISidebarOpen);
   const toggleAISidebar = useBrowserStore((s) => s.toggleAISidebar);
   const setMode = useAIStore((s) => s.setMode);
   const newConversation = useAIStore((s) => s.newConversation);
 
   const host = hostOf(url);
-  const pretty = prettyUrl(url);
 
   // Register/unregister the webview so the Toolbar can call goBack/goForward/reload
   useEffect(() => {
@@ -56,15 +64,6 @@ export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
     const onLoadingStop = () => {
       setIsLoading(false);
       setTabStatus(tabId, "idle");
-      // Sync the final URL back to the store (in case of redirects)
-      try {
-        const currentUrl = wv.getURL();
-        if (currentUrl && currentUrl !== url) {
-          navigateTab(tabId, currentUrl, wv.getTitle() || initialTitle);
-        }
-      } catch {
-        /* webview not ready */
-      }
     };
     const onTitleUpdated = (e: Event) => {
       const ev = e as unknown as { title: string };
@@ -74,16 +73,30 @@ export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
     };
     const onDidNavigate = (e: Event) => {
       const ev = e as unknown as { url: string };
-      if (ev.url) {
-        navigateTab(tabId, ev.url);
+      // Sync the new URL silently to the store WITHOUT triggering a reload.
+      // We do this by directly patching the tab in the store via getState,
+      // avoiding the navigateTab() action which sets status to "loading".
+      if (ev.url && ev.url !== lastSyncedUrl.current) {
+        lastSyncedUrl.current = ev.url;
+        // Directly patch the URL in the store without triggering a loading cycle
+        useBrowserStore.setState((s) => ({
+          tabs: s.tabs.map((t) =>
+            t.id === tabId
+              ? { ...t, url: ev.url, title: wv.getTitle() || t.title }
+              : t
+          ),
+        }));
       }
     };
     const onDidFailLoad = (e: Event) => {
-      const ev = e as unknown as { errorCode: number; errorDescription: string };
-      if (ev.errorCode !== -3 && ev.errorCode !== 0) {
-        setError(ev.errorDescription || `Error code ${ev.errorCode}`);
-        setTabStatus(tabId, "error");
-      }
+      const ev = e as unknown as { errorCode: number; errorDescription: string; isMainFrame: boolean };
+      // Ignore sub-frame errors and the ABORTED (-3) code which happens when
+      // the user navigates away before a load completes (normal behavior).
+      if (!ev.isMainFrame) return;
+      if (ev.errorCode === -3) return; // ERR_ABORTED — user navigated away, not a real error
+      if (ev.errorCode === 0) return;
+      setError(ev.errorDescription || `Error code ${ev.errorCode}`);
+      setTabStatus(tabId, "error");
     };
     const onNewWindow = (e: Event) => {
       const ev = e as unknown as { url: string };
@@ -105,6 +118,9 @@ export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
     wv.addEventListener("did-fail-load", onDidFailLoad);
     wv.addEventListener("new-window", onNewWindow);
 
+    // Mark the initial URL as already synced so we don't re-trigger a load
+    lastSyncedUrl.current = url;
+
     return () => {
       unregisterWebview(tabId);
       wv.removeEventListener("did-start-loading", onLoadingStart);
@@ -115,7 +131,7 @@ export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
       wv.removeEventListener("did-fail-load", onDidFailLoad);
       wv.removeEventListener("new-window", onNewWindow);
     };
-  }, [tabId, url, initialTitle, setTabStatus, setTabTitle, navigateTab]);
+  }, [tabId]); // Only re-run if tabId changes — NOT on url change
 
   const handleSummarize = () => {
     setMode("summarize");
@@ -139,7 +155,9 @@ export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
         />
       )}
 
-      {/* The actual webview — fills the entire viewport */}
+      {/* The actual webview — fills the entire viewport.
+          src is set ONCE on mount; subsequent navigations happen inside the
+          webview itself and are synced back to the store via events. */}
       <webview
         ref={webviewRef as React.RefObject<HTMLWebViewElement>}
         src={url}
@@ -160,13 +178,13 @@ export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
               <Shield className="mx-auto h-8 w-8" />
             </div>
             <h3 className="mb-2 text-[16px] font-semibold text-[var(--text-primary)]">
-              Couldn't load this page
+              Couldn&apos;t load this page
             </h3>
             <p className="mb-4 text-[12px] text-[var(--text-secondary)]">
               {error}
             </p>
             <p className="mb-4 text-[11px] text-[var(--text-tertiary)]">
-              URL: {pretty}
+              URL: {prettyUrl(url)}
             </p>
             <div className="flex justify-center gap-2">
               <button

@@ -74,9 +74,19 @@ function TabContent({ tab }: { tab: Tab | undefined }) {
   if (isBlob) {
     return <LocalFilePreview url={url} name={tab.title} onSummarize={handleSummarize} />;
   }
-  // In Electron, render a real webview so the user can actually browse the web
+  // In Electron, render a real webview so the user can actually browse the web.
+  // The key combines tabId + navEpoch so the webview remounts ONLY when the user
+  // explicitly navigates (omnibox submit, bookmark click, back/forward) — NOT when
+  // the webview navigates internally (clicking a link inside the page).
   if (isElectron()) {
-    return <WebviewView tabId={tab.id} url={url} initialTitle={tab.title} />;
+    return (
+      <WebviewView
+        key={`${tab.id}-${tab.navEpoch}`}
+        tabId={tab.id}
+        url={url}
+        initialTitle={tab.title}
+      />
+    );
   }
   // In a regular browser, fall back to the preview card
   return <PagePreview url={url} title={tab.title} theme={theme ?? "dark"} onSummarize={handleSummarize} />;
