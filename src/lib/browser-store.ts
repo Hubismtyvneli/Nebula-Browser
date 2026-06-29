@@ -51,6 +51,8 @@ export interface DownloadItem {
 interface BrowserState {
   tabs: Tab[];
   activeTabId: string | null;
+  /** When set, this tab is pinned to the right half of the viewport (split-screen). */
+  splitTabId: string | null;
   bookmarks: Bookmark[];
   history: HistoryEntry[];
   downloads: DownloadItem[];
@@ -71,6 +73,19 @@ interface BrowserState {
   reloadTab: (id: string) => void;
   setTabStatus: (id: string, status: TabStatus) => void;
   setTabTitle: (id: string, title: string) => void;
+
+  /** Bulk tab actions used by the right-click context menu. */
+  duplicateTab: (id: string) => void;
+  closeOthers: (id: string) => void;
+  closeTabsToTheLeft: (id: string) => void;
+  closeTabsToTheRight: (id: string) => void;
+  closeAllTabs: () => void;
+  copyTabUrl: (id: string) => string | null;
+
+  /** Split-screen: pin a tab to the right half of the viewport. */
+  toggleSplit: (id: string | null) => void;
+  swapSplitWithActive: () => void;
+  closeSplit: () => void;
 
   addBookmark: (b: Omit<Bookmark, "id" | "createdAt">) => void;
   removeBookmark: (id: string) => void;
@@ -114,6 +129,7 @@ export const useBrowserStore = create<BrowserState>()(
     (set, get) => ({
       tabs: [makeNewTab()],
       activeTabId: null, // will be set on hydrate
+      splitTabId: null,
       bookmarks: [
         { id: uid(), title: "GitHub",    url: "https://github.com",     favicon: "G", createdAt: Date.now() },
         { id: uid(), title: "YouTube",   url: "https://youtube.com",    favicon: "Y", createdAt: Date.now() },
@@ -137,10 +153,10 @@ export const useBrowserStore = create<BrowserState>()(
         return t.id;
       },
       closeTab: (id) => {
-        const { tabs, activeTabId } = get();
+        const { tabs, activeTabId, splitTabId } = get();
         if (tabs.length === 1) {
           const fresh = makeNewTab();
-          set({ tabs: [fresh], activeTabId: fresh.id });
+          set({ tabs: [fresh], activeTabId: fresh.id, splitTabId: null });
           return;
         }
         const idx = tabs.findIndex((t) => t.id === id);
@@ -150,7 +166,8 @@ export const useBrowserStore = create<BrowserState>()(
           const fallback = next[Math.min(idx, next.length - 1)];
           nextActive = fallback?.id ?? null;
         }
-        set({ tabs: next, activeTabId: nextActive });
+        const nextSplit = splitTabId === id ? null : splitTabId;
+        set({ tabs: next, activeTabId: nextActive, splitTabId: nextSplit });
       },
       activateTab: (id) => set({ activeTabId: id }),
       reorderTabs: (from, to) =>
@@ -209,6 +226,92 @@ export const useBrowserStore = create<BrowserState>()(
         set((s) => ({
           tabs: s.tabs.map((t) => (t.id === id ? { ...t, title } : t)),
         })),
+
+      duplicateTab: (id) => {
+        const src = get().tabs.find((t) => t.id === id);
+        if (!src) return;
+        const copy: Tab = {
+          ...src,
+          id: uid(),
+          createdAt: Date.now(),
+          history: [...src.history],
+          status: "idle",
+        };
+        const idx = get().tabs.findIndex((t) => t.id === id);
+        const next = [...get().tabs];
+        next.splice(idx + 1, 0, copy);
+        set({ tabs: next, activeTabId: copy.id });
+      },
+
+      closeOthers: (id) => {
+        const { tabs } = get();
+        const keep = tabs.find((t) => t.id === id);
+        if (!keep) return;
+        set({ tabs: [keep], activeTabId: keep.id, splitTabId: null });
+      },
+
+      closeTabsToTheLeft: (id) => {
+        const { tabs, activeTabId, splitTabId } = get();
+        const idx = tabs.findIndex((t) => t.id === id);
+        if (idx === -1) return;
+        const next = tabs.slice(idx);
+        // If the active tab was closed, switch to the kept tab
+        const stillActive = next.some((t) => t.id === activeTabId);
+        const stillSplit = next.some((t) => t.id === splitTabId);
+        set({
+          tabs: next,
+          activeTabId: stillActive ? activeTabId : id,
+          splitTabId: stillSplit ? splitTabId : null,
+        });
+      },
+
+      closeTabsToTheRight: (id) => {
+        const { tabs, activeTabId, splitTabId } = get();
+        const idx = tabs.findIndex((t) => t.id === id);
+        if (idx === -1) return;
+        const next = tabs.slice(0, idx + 1);
+        const stillActive = next.some((t) => t.id === activeTabId);
+        const stillSplit = next.some((t) => t.id === splitTabId);
+        set({
+          tabs: next,
+          activeTabId: stillActive ? activeTabId : id,
+          splitTabId: stillSplit ? splitTabId : null,
+        });
+      },
+
+      closeAllTabs: () => {
+        const fresh = makeNewTab();
+        set({ tabs: [fresh], activeTabId: fresh.id, splitTabId: null });
+      },
+
+      copyTabUrl: (id) => {
+        const t = get().tabs.find((x) => x.id === id);
+        if (!t || !t.url) return null;
+        if (typeof navigator !== "undefined" && navigator.clipboard) {
+          navigator.clipboard.writeText(t.url).catch(() => {});
+        }
+        return t.url;
+      },
+
+      toggleSplit: (id) => {
+        const { splitTabId, activeTabId } = get();
+        // Don't split the active tab with itself
+        if (id === activeTabId) return;
+        // Toggling the already-split tab closes split
+        if (splitTabId === id) {
+          set({ splitTabId: null });
+          return;
+        }
+        set({ splitTabId: id });
+      },
+
+      swapSplitWithActive: () => {
+        const { splitTabId, activeTabId } = get();
+        if (!splitTabId || !activeTabId) return;
+        set({ activeTabId: splitTabId, splitTabId: activeTabId });
+      },
+
+      closeSplit: () => set({ splitTabId: null }),
 
       addBookmark: (b) =>
         set((s) => {

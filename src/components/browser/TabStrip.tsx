@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Loader2 } from "lucide-react";
+import { X, Plus, Loader2, Columns2 } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -17,18 +17,19 @@ import {
   useSortable,
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { useBrowserStore, type Tab } from "@/lib/browser-store";
 import { cn } from "@/lib/utils";
+import { TabContextMenu } from "./TabContextMenu";
 
 interface TabPillProps {
   tab: Tab;
   active: boolean;
+  isSplit: boolean;
   onClick: () => void;
   onClose: (e: React.MouseEvent) => void;
 }
 
-function TabPill({ tab, active, onClick, onClose }: TabPillProps) {
+function TabPill({ tab, active, isSplit, onClick, onClose }: TabPillProps) {
   const {
     attributes,
     listeners,
@@ -38,7 +39,7 @@ function TabPill({ tab, active, onClick, onClose }: TabPillProps) {
     isDragging,
   } = useSortable({ id: tab.id });
 
-  return (
+  const content = (
     <motion.div
       ref={setNodeRef}
       layout
@@ -82,6 +83,17 @@ function TabPill({ tab, active, onClick, onClose }: TabPillProps) {
         />
       )}
 
+      {/* Split indicator — small neon dot in the top-right */}
+      {isSplit && (
+        <span
+          className="absolute -right-0.5 -top-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-[var(--neon)]"
+          style={{ boxShadow: "0 0 6px var(--neon)" }}
+          title="Pinned to split view (right side)"
+        >
+          <Columns2 className="h-2 w-2 text-[var(--bg-canvas)]" />
+        </span>
+      )}
+
       {/* Drag handle = entire tab body. Click still works via onClick. */}
       <div
         {...attributes}
@@ -114,11 +126,20 @@ function TabPill({ tab, active, onClick, onClose }: TabPillProps) {
       </button>
     </motion.div>
   );
+
+  // Wrap the tab in a context menu. The menu passes through to children,
+  // so we use `asChild` on the trigger and pass the content directly.
+  return (
+    <TabContextMenu tab={tab} isActive={active} isSplit={isSplit}>
+      {content}
+    </TabContextMenu>
+  );
 }
 
 export function TabStrip() {
   const tabs = useBrowserStore((s) => s.tabs);
   const activeTabId = useBrowserStore((s) => s.activeTabId);
+  const splitTabId = useBrowserStore((s) => s.splitTabId);
   const activateTab = useBrowserStore((s) => s.activateTab);
   const closeTab = useBrowserStore((s) => s.closeTab);
   const newTab = useBrowserStore((s) => s.newTab);
@@ -152,6 +173,7 @@ export function TabStrip() {
                 key={tab.id}
                 tab={tab}
                 active={tab.id === activeTabId}
+                isSplit={tab.id === splitTabId}
                 onClick={() => activateTab(tab.id)}
                 onClose={(e) => {
                   e.stopPropagation();
