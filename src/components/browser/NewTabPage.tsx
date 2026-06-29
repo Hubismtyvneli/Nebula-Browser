@@ -1,12 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sparkles, Search, Code, Languages, FileText, Plus, Clock } from "lucide-react";
+import { Sparkles, Search, Code, Languages, FileText, Plus, Clock, Palette } from "lucide-react";
 import { useState } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useAIStore } from "@/lib/ai-store";
+import { useWallpaperStore } from "@/lib/wallpaper-store";
 import { normalizeOmniboxInput, searchUrl, prettyUrl } from "@/lib/url";
 import { Favicon } from "./Favicon";
+import { WallpaperBackground } from "./WallpaperBackground";
 
 const QUICK_LINKS = [
   { title: "GitHub",     url: "https://github.com",     favicon: "G", color: "#FFFFFF" },
@@ -58,6 +60,11 @@ export function NewTabPage() {
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-start overflow-y-auto scroll-nebula px-6 pt-20 pb-12">
+      {/* Active wallpaper as background */}
+      <WallpaperBackground />
+
+      {/* Content sits above the wallpaper */}
+      <div className="relative z-10 flex w-full flex-col items-center">
       {/* Logo — CSS animation instead of Framer Motion for the rotation
           (GPU-composited, no React re-renders, no lag spike on tab open) */}
       <motion.div
@@ -221,6 +228,22 @@ export function NewTabPage() {
           </div>
         </motion.div>
       )}
+      </div>
+
+      {/* Floating wallpaper picker button (bottom-right, Opera GX style) */}
+      <motion.button
+        type="button"
+        onClick={() => useWallpaperStore.getState().toggleMarketplace(true)}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.5, type: "spring", stiffness: 320, damping: 28 }}
+        whileHover={{ scale: 1.08, y: -2 }}
+        whileTap={{ scale: 0.92 }}
+        className="fixed bottom-4 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full glass-strong"
+        title="Browse wallpapers"
+      >
+        <Palette className="h-4 w-4 text-[var(--neon)]" />
+      </motion.button>
     </div>
   );
 }

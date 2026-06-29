@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useSettingsStore, type AccentName, type GlassIntensity } from "@/lib/settings-store";
 import { useAuthStore } from "@/lib/auth-store";
+import { useWallpaperStore } from "@/lib/wallpaper-store";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { checkForUpdatesManual, UpdateStatusBadge, APP_VERSION, type UpdateInfo } from "./UpdateNotification";
@@ -23,13 +24,6 @@ const GLASS_LEVELS: { id: GlassIntensity; label: string; hint: string }[] = [
   { id: "subtle", label: "Subtle", hint: "12px blur" },
   { id: "strong", label: "Strong", hint: "28px blur" },
 ];
-
-const WALLPAPERS = [
-  { id: "aurora",  label: "Aurora",  colors: ["var(--neon-soft)", "transparent"] },
-  { id: "obsidian",label: "Obsidian",colors: ["rgba(0,0,0,0.5)", "transparent"] },
-  { id: "paper",   label: "Paper",   colors: ["rgba(255,255,255,0.5)", "transparent"] },
-  { id: "void",    label: "Void",    colors: ["rgba(0,0,0,0.95)", "transparent"] },
-] as const;
 
 export function SettingsPanel() {
   const isOpen = useBrowserStore((s) => s.isSettingsOpen);
@@ -50,6 +44,10 @@ export function SettingsPanel() {
   const isSignedIn = useAuthStore((s) => s.isSignedIn);
   const openAuthModal = useAuthStore((s) => s.openAuthModal);
   const signOut = useAuthStore((s) => s.signOut);
+
+  // Wallpaper state
+  const activeWallpaper = useWallpaperStore((s) => s.wallpapers.find((w) => w.id === s.activeWallpaperId));
+  const wallpaperCount = useWallpaperStore((s) => s.wallpapers.length);
 
   // Update checker state
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
@@ -178,29 +176,37 @@ export function SettingsPanel() {
               </Section>
 
               {/* Wallpaper */}
-              <Section icon={<Sparkles className="h-3.5 w-3.5" />} title="New tab wallpaper">
-                <div className="grid grid-cols-4 gap-2">
-                  {WALLPAPERS.map((w) => (
-                    <button
-                      key={w.id}
-                      type="button"
-                      onClick={() => setNtpWallpaper(w.id)}
-                      className={cn(
-                        "relative aspect-square overflow-hidden rounded-xl border transition-all",
-                        ntpWallpaper === w.id
-                          ? "border-[var(--neon)]"
-                          : "border-[var(--border-hairline)] hover:border-[var(--border-glass)]"
-                      )}
+              <Section icon={<Sparkles className="h-3.5 w-3.5" />} title="Wallpaper">
+                <button
+                  type="button"
+                  onClick={() => useWallpaperStore.getState().toggleMarketplace(true)}
+                  className="flex w-full items-center justify-between rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 text-left transition-colors hover:border-[var(--border-glass)]"
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Active wallpaper preview */}
+                    <div
+                      className="h-10 w-10 shrink-0 rounded-lg border border-[var(--border-hairline)]"
                       style={{
-                        background: `linear-gradient(135deg, ${w.colors[0]}, ${w.colors[1]})`,
+                        background: activeWallpaper?.type === "gradient" && activeWallpaper?.gradientCss
+                          ? activeWallpaper.gradientCss
+                          : activeWallpaper?.fileUrl
+                            ? `url(${activeWallpaper.fileUrl})`
+                            : "var(--bg-canvas)",
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
                       }}
-                    >
-                      <span className="absolute bottom-1 left-1 text-[9px] text-white/80">
-                        {w.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                    />
+                    <div>
+                      <div className="text-[12px] font-semibold text-[var(--text-primary)]">
+                        {activeWallpaper?.title ?? "Default"}
+                      </div>
+                      <div className="text-[10px] text-[var(--text-tertiary)]">
+                        {wallpaperCount} wallpapers available · Click to browse
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-medium text-[var(--neon)]">Browse →</span>
+                </button>
               </Section>
 
               {/* Motion */}

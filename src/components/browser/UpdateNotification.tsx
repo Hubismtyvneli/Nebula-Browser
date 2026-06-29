@@ -15,7 +15,7 @@ interface UpdateInfo {
   assets: Array<{ name: string; url: string; size: number }>;
 }
 
-const APP_VERSION = "0.4.1";
+const APP_VERSION = "0.4.2";
 // Your GitHub repo — update checker fetches the latest release from here
 const GITHUB_REPO = "Hubismtyvneli/Nebula-Browser";
 

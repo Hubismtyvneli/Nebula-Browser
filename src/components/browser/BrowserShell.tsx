@@ -14,6 +14,7 @@ import { FileDropZone } from "./FileDropZone";
 import { OnboardingTutorial } from "./OnboardingTutorial";
 import { UpdateNotification } from "./UpdateNotification";
 import { AuthModal } from "./AuthModal";
+import { WallpaperMarketplace } from "./WallpaperMarketplace";
 import { useAuthStore } from "@/lib/auth-store";
 import { useDataSync } from "@/lib/use-data-sync";
 import { useBrowserStore } from "@/lib/browser-store";
@@ -185,6 +186,9 @@ export function BrowserShell() {
 
       {/* Auth modal — sign in / sign up */}
       <AuthModal />
+
+      {/* Wallpaper marketplace panel */}
+      <WallpaperMarketplace />
 
       {/* Status bar */}
       <StatusBar />

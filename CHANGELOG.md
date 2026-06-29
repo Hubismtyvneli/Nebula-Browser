@@ -7,9 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned (v0.4.0 remaining)
-- Wallpaper marketplace (static + animated, community-uploaded)
 - Plugin system (themes, sidebar panels, toolbar actions, AI extensions)
 - Real-time tab sync across devices
+- Community wallpaper upload + moderation
+
+## [0.4.2] — 2026-06-29
+
+### Added
+- **Wallpaper marketplace** — Opera GX-style wallpaper system
+  - `supabase/migrations/0002_wallpapers.sql` — wallpapers table + storage bucket with RLS
+  - `src/lib/wallpaper-store.ts` — Zustand store with 10 built-in preset wallpapers (Nebula, Obsidian, Aurora, Cyberpunk, Ocean, Forest, Inferno, Frost, Mono, Synthwave)
+  - `WallpaperMarketplace.tsx` — browse, search, filter by category (gradient/static/animated/live), preview, apply
+  - `WallpaperBackground.tsx` — renders active wallpaper behind the New Tab Page (supports gradients, static images, and animated videos)
+  - Upload custom wallpapers (PNG/JPG/WebP/MP4/WebM) — uploaded to Supabase Storage, requires sign-in
+  - Wallpaper picker button on NTP (bottom-right, Opera GX style) — opens marketplace instantly
+  - Settings panel → Wallpaper section shows active wallpaper preview + browse button
+  - Wallpapers persist across sessions (localStorage)
+  - Categories: Gradient, Static, Animated, Live
+  - Rating + download counts displayed on each card
+  - Delete custom wallpapers (hover → trash icon)
 
 ## [0.4.1] — 2026-06-29
 
