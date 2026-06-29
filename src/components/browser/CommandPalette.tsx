@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Clock, Star, Plus, ArrowRight, Settings as SettingsIcon, Sparkles, X } from "lucide-react";
+import { Search, Clock, Star, Plus, ArrowRight, Settings as SettingsIcon, Sparkles, X, Columns2, ArrowLeftRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
 import { prettyUrl } from "@/lib/url";
@@ -28,6 +28,7 @@ export function CommandPalette() {
   const activeTabId = useBrowserStore((s) => s.activeTabId);
   const toggleAISidebar = useBrowserStore((s) => s.toggleAISidebar);
   const toggleSettings = useBrowserStore((s) => s.toggleSettings);
+  const splitTabId = useBrowserStore((s) => s.splitTabId);
 
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -101,9 +102,39 @@ export function CommandPalette() {
           toggle(false);
         },
       },
+      {
+        id: "act-toggle-split",
+        label: splitTabId ? "Exit split view" : "Enter split view",
+        hint: "⌘\\",
+        icon: <Columns2 className="h-3.5 w-3.5" />,
+        group: "actions",
+        action: () => {
+          const st = useBrowserStore.getState();
+          if (st.splitTabId) {
+            st.closeSplit();
+          } else {
+            const otherTabs = st.tabs.filter((t) => t.id !== st.activeTabId && t.url);
+            if (otherTabs.length > 0) {
+              st.toggleSplit(otherTabs[otherTabs.length - 1].id);
+            }
+          }
+          toggle(false);
+        },
+      },
+      ...(splitTabId ? [{
+        id: "act-swap-split",
+        label: "Swap split sides",
+        hint: "⌘⇧\\",
+        icon: <ArrowLeftRight className="h-3.5 w-3.5" />,
+        group: "actions" as const,
+        action: () => {
+          useBrowserStore.getState().swapSplitWithActive();
+          toggle(false);
+        },
+      }] : []),
     ];
     return [...actionCmds, ...tabCmds, ...bmCmds, ...histCmds];
-  }, [tabs, bookmarks, history, activeTabId, activateTab, navigateTab, newTab, toggleAISidebar, toggleSettings, toggle]);
+  }, [tabs, bookmarks, history, activeTabId, activateTab, navigateTab, newTab, toggleAISidebar, toggleSettings, toggle, splitTabId]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return commands;

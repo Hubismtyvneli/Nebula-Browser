@@ -169,6 +169,24 @@ Centered, Grok.com-inspired layout:
 - [x] **Real downloads store** — `addDownload`, `updateDownload`, `removeDownload`, `clearDownloads` with progress, status (completed / in_progress / paused / failed), file kind, blob URL, text preview
 - [x] **Local file preview** — dropped files render with type-specific viewers (img / video / audio / iframe-PDF / pre-formatted code) inside a glass card with a Summarize button
 
+### 4.6 Split View & Tab Context Menu (added v0.3)
+- [x] **Split-screen** — pin any non-active tab to the right half of the viewport; left pane shows the active tab, right pane shows the split-pinned tab; each pane has its own chrome bar with favicon + title + label badge (ACTIVE / SPLIT)
+- [x] **Draggable divider** — drag the 1px neon divider left/right to resize panes (clamped 20%–80%); cursor becomes col-resize; body text selection disabled during drag
+- [x] **Swap sides** — swap button in the right pane's chrome flips active↔split instantly (also `⌘⇧\`)
+- [x] **Exit split** — close button in the right pane's chrome, or the toolbar split toggle, or `⌘\` again, or context menu "Exit split view"
+- [x] **Toolbar split toggle** — neon Columns2 icon between "More" and the AI button; disabled when fewer than 2 URL tabs; auto-pins the most recent other URL tab
+- [x] **Tab context menu** (right-click any tab) with 11 items grouped by purpose:
+  - Open, Reload (⌘R), Duplicate tab
+  - Split view (pin right) / Exit split view — disabled if it's the active tab
+  - Copy URL, Bookmark this tab (only shown if tab has a URL)
+  - Close tabs to the left, Close tabs to the right, Close other tabs, Close all tabs
+  - Close this tab (⌘W) — highlighted red
+- [x] **Split indicator on tab pill** — small neon Columns2 badge in the top-right corner of the tab pinned to split view
+- [x] **Status bar indicator** — "split view on" in neon when split is active
+- [x] **Command palette entries** — "Enter/Exit split view" (⌘\) and "Swap split sides" (⌘⇧\) actions
+- [x] **Keyboard shortcuts** — `⌘\` toggle split, `⌘⇧\` swap sides
+- [x] **Safe state transitions** — closing the split tab auto-clears split; closeOthers/closeLeft/closeRight all preserve the split if possible, clear it otherwise; closing all tabs resets to a fresh new tab
+
 
 
 ---

@@ -13,6 +13,7 @@ import {
   Lock,
   Search,
   X,
+  Columns2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
@@ -35,6 +36,9 @@ export function Toolbar() {
   const toggleAISidebar = useBrowserStore((s) => s.toggleAISidebar);
   const isAISidebarOpen = useBrowserStore((s) => s.isAISidebarOpen);
   const toggleDownloadsPanel = useBrowserStore((s) => s.toggleDownloadsPanel);
+  const splitTabId = useBrowserStore((s) => s.splitTabId);
+  const toggleSplit = useBrowserStore((s) => s.toggleSplit);
+  const closeSplit = useBrowserStore((s) => s.closeSplit);
 
   const isThinking = useAIStore((s) => s.isThinking);
 
@@ -134,6 +138,31 @@ export function Toolbar() {
           icon={<MoreHorizontal className="h-4 w-4" />}
           onClick={() => useBrowserStore.getState().toggleSettings(true)}
           label="More"
+        />
+
+        {/* Split view toggle — neon when active */}
+        <ToolbarButton
+          icon={
+            <Columns2
+              className={cn(
+                "h-4 w-4",
+                splitTabId && "text-[var(--neon)]"
+              )}
+            />
+          }
+          onClick={() => {
+            if (splitTabId) {
+              closeSplit();
+              return;
+            }
+            // Pick the most recent *other* tab to pin as the split
+            const otherTabs = tabs.filter((t) => t.id !== activeTabId && t.url);
+            if (otherTabs.length === 0) return;
+            const target = otherTabs[otherTabs.length - 1];
+            toggleSplit(target.id);
+          }}
+          label={splitTabId ? "Exit split view (⌘\\)" : "Split view (⌘\\)"}
+          disabled={tabs.filter((t) => t.id !== activeTabId && t.url).length === 0 && !splitTabId}
         />
 
         {/* AI toggle — neon accent */}

@@ -1,65 +1,217 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ExternalLink, Shield, Sparkles, Globe, Lock } from "lucide-react";
-import { useBrowserStore } from "@/lib/browser-store";
+import {
+  ExternalLink, Shield, Sparkles, Globe, Lock, X, ArrowLeftRight,
+  PinOff,
+} from "lucide-react";
+import { useBrowserStore, type Tab } from "@/lib/browser-store";
 import { useAIStore } from "@/lib/ai-store";
 import { prettyUrl, faviconFor, hostOf } from "@/lib/url";
 import { classifyFile } from "@/lib/files";
 import { NewTabPage } from "./NewTabPage";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function Viewport() {
   const tabs = useBrowserStore((s) => s.tabs);
   const activeTabId = useBrowserStore((s) => s.activeTabId);
+  const splitTabId = useBrowserStore((s) => s.splitTabId);
+
+  const activeTab = tabs.find((t) => t.id === activeTabId);
+  const splitTab = splitTabId ? tabs.find((t) => t.id === splitTabId) : null;
+
+  return (
+    <div className="relative flex-1 overflow-hidden">
+      {splitTab && activeTab && splitTab.id !== activeTab.id ? (
+        <SplitView leftTab={activeTab} rightTab={splitTab} />
+      ) : (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab?.id ?? "empty"}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-0 overflow-hidden"
+          >
+            <TabContent tab={activeTab} />
+          </motion.div>
+        </AnimatePresence>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Renders one tab's content (NTP / local file preview / web page preview).
+ * Pure function of the tab — used both in single view and in split view.
+ */
+function TabContent({ tab }: { tab: Tab | undefined }) {
   const isAISidebarOpen = useBrowserStore((s) => s.isAISidebarOpen);
   const toggleAISidebar = useBrowserStore((s) => s.toggleAISidebar);
   const setMode = useAIStore((s) => s.setMode);
   const newConversation = useAIStore((s) => s.newConversation);
   const { theme } = useTheme();
 
-  const activeTab = tabs.find((t) => t.id === activeTabId);
-  const url = activeTab?.url ?? "";
+  const url = tab?.url ?? "";
   const isBlob = url.startsWith("blob:") || url.startsWith("data:");
 
+  const handleSummarize = () => {
+    setMode("summarize");
+    if (!isAISidebarOpen) toggleAISidebar(true);
+    if (!useAIStore.getState().activeConversationId) newConversation();
+  };
+
+  if (!tab || !tab.url) {
+    return <NewTabPage />;
+  }
+  if (isBlob) {
+    return <LocalFilePreview url={url} name={tab.title} onSummarize={handleSummarize} />;
+  }
+  return <PagePreview url={url} title={tab.title} theme={theme ?? "dark"} onSummarize={handleSummarize} />;
+}
+
+/**
+ * Split-view layout: two tabs side-by-side with a draggable neon divider.
+ * The left pane shows the active tab; the right pane shows the split-pinned tab.
+ * A small floating control bar at the top lets users swap sides or exit split.
+ */
+function SplitView({ leftTab, rightTab }: { leftTab: Tab; rightTab: Tab }) {
+  const swapSplitWithActive = useBrowserStore((s) => s.swapSplitWithActive);
+  const closeSplit = useBrowserStore((s) => s.closeSplit);
+  const activateTab = useBrowserStore((s) => s.activateTab);
+  const [splitPct, setSplitPct] = useState(50);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  // Drag divider to resize
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!draggingRef.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+      setSplitPct(Math.min(80, Math.max(20, pct)));
+    };
+    const onUp = () => {
+      draggingRef.current = false;
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  const startDrag = () => {
+    draggingRef.current = true;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+  };
+
   return (
-    <div className="relative flex-1 overflow-hidden">
-      <AnimatePresence mode="wait">
+    <div ref={containerRef} className="absolute inset-0 flex">
+      {/* Left pane */}
+      <div
+        className="relative h-full overflow-hidden border-r border-[var(--border-hairline)]"
+        style={{ width: `${splitPct}%` }}
+      >
+        <SplitPaneChrome label="Active" tab={leftTab} onClick={() => activateTab(leftTab.id)} />
+        <div className="absolute inset-0 top-[28px] overflow-hidden">
+          <TabContent tab={leftTab} />
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div
+        onMouseDown={startDrag}
+        className="relative z-10 flex h-full w-1 cursor-col-resize items-center justify-center bg-[var(--border-hairline)] transition-colors hover:bg-[var(--neon)]"
+        style={{ boxShadow: "0 0 0 1px transparent" }}
+      >
         <motion.div
-          key={activeTab?.id ?? "empty"}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute inset-0 overflow-hidden"
-        >
-          {!activeTab || !activeTab.url ? (
-            <NewTabPage />
-          ) : isBlob ? (
-            <LocalFilePreview
-              url={url}
-              name={activeTab.title}
-              onSummarize={() => {
-                setMode("summarize");
-                if (!isAISidebarOpen) toggleAISidebar(true);
-                if (!useAIStore.getState().activeConversationId) newConversation();
-              }}
-            />
-          ) : (
-            <PagePreview
-              url={url}
-              title={activeTab.title}
-              theme={theme ?? "dark"}
-              onSummarize={() => {
-                setMode("summarize");
-                if (!isAISidebarOpen) toggleAISidebar(true);
-                if (!useAIStore.getState().activeConversationId) newConversation();
-              }}
-            />
-          )}
-        </motion.div>
-      </AnimatePresence>
+          initial={{ opacity: 0, scale: 0.5 }}
+          whileHover={{ scale: 1.1 }}
+          className="absolute h-10 w-1 rounded-full bg-[var(--neon)]"
+          style={{ boxShadow: "0 0 12px var(--neon-soft)" }}
+        />
+        <div
+          className="absolute h-16 w-1 cursor-col-resize"
+          style={{ background: "transparent" }}
+        />
+      </div>
+
+      {/* Right pane */}
+      <div
+        className="relative h-full flex-1 overflow-hidden"
+      >
+        <SplitPaneChrome
+          label="Split"
+          tab={rightTab}
+          onClick={() => activateTab(rightTab.id)}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={swapSplitWithActive}
+                title="Swap sides"
+                className="flex h-5 w-5 items-center justify-center rounded text-[var(--text-tertiary)] hover:bg-white/10 hover:text-[var(--text-primary)]"
+              >
+                <ArrowLeftRight className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                onClick={closeSplit}
+                title="Exit split view"
+                className="flex h-5 w-5 items-center justify-center rounded text-[var(--text-tertiary)] hover:bg-white/10 hover:text-[#FF5F57]"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </>
+          }
+        />
+        <div className="absolute inset-0 top-[28px] overflow-hidden">
+          <TabContent tab={rightTab} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SplitPaneChrome({
+  label,
+  tab,
+  onClick,
+  actions,
+}: {
+  label: string;
+  tab: Tab;
+  onClick: () => void;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div className="absolute left-0 right-0 top-0 z-10 flex h-7 items-center gap-2 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 backdrop-blur-xl">
+      <span
+        className="rounded-full bg-[var(--neon-soft)] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-[var(--neon)]"
+      >
+        {label}
+      </span>
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+        title="Focus this tab"
+      >
+        <span className="flex h-3 w-3 shrink-0 items-center justify-center text-[10px] font-bold text-[var(--text-secondary)]">
+          {tab.favicon ?? "✦"}
+        </span>
+        <span className="truncate text-[11px] font-medium text-[var(--text-primary)]">
+          {tab.title || "New Tab"}
+        </span>
+      </button>
+      {actions}
     </div>
   );
 }
