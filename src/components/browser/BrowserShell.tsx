@@ -12,6 +12,7 @@ import { HistoryPanel } from "./HistoryPanel";
 import { DownloadsPanel } from "./DownloadsPanel";
 import { FileDropZone } from "./FileDropZone";
 import { OnboardingTutorial } from "./OnboardingTutorial";
+import { UpdateNotification } from "./UpdateNotification";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useSettingsStore } from "@/lib/settings-store";
 import { formatBytes, classifyFile } from "@/lib/files";
@@ -163,6 +164,9 @@ export function BrowserShell() {
 
       {/* First-open tutorial — shows on first launch, can be dismissed */}
       <OnboardingTutorial />
+
+      {/* Update notifier — checks GitHub on launch + every 30 min */}
+      <UpdateNotification />
 
       {/* Status bar */}
       <StatusBar />

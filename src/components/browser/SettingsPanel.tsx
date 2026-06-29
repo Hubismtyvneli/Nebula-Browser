@@ -1,11 +1,13 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Palette, Layers, Clock, Sparkles, Zap, Monitor, Sun, Moon, Type } from "lucide-react";
+import { X, Palette, Layers, Clock, Sparkles, Zap, Monitor, Sun, Moon, Type, Download, CheckCircle2, Loader2, ExternalLink } from "lucide-react";
+import { useState } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useSettingsStore, type AccentName, type GlassIntensity } from "@/lib/settings-store";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { checkForUpdatesManual, UpdateStatusBadge, APP_VERSION, type UpdateInfo } from "./UpdateNotification";
 
 const ACCENTS: { id: AccentName; label: string; color: string }[] = [
   { id: "cyan",    label: "Cyan",    color: "#00E5FF" },
@@ -41,6 +43,19 @@ export function SettingsPanel() {
   const setReduceMotion = useSettingsStore((s) => s.setReduceMotion);
   const ntpWallpaper = useSettingsStore((s) => s.ntpWallpaper);
   const setNtpWallpaper = useSettingsStore((s) => s.setNtpWallpaper);
+
+  // Update checker state
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+  const [lastCheckTime, setLastCheckTime] = useState<string | null>(null);
+
+  const handleCheckUpdates = async () => {
+    setIsCheckingUpdates(true);
+    const info = await checkForUpdatesManual();
+    setUpdateInfo(info);
+    setLastCheckTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+    setIsCheckingUpdates(false);
+  };
 
   return (
     <AnimatePresence>
@@ -194,17 +209,55 @@ export function SettingsPanel() {
               {/* About */}
               <Section icon={<Type className="h-3.5 w-3.5" />} title="About">
                 <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3">
-                  <div className="mb-1 text-[13px] font-semibold text-[var(--text-primary)]">
-                    Nebula Browser
+                  <div className="mb-1 flex items-center justify-between">
+                    <div className="text-[13px] font-semibold text-[var(--text-primary)]">
+                      Nebula Browser
+                    </div>
+                    <UpdateStatusBadge update={updateInfo} />
                   </div>
                   <div className="text-[11px] text-[var(--text-secondary)]">
                     A minimalistic, liquid-glass browser concept with built-in GLM AI.
                   </div>
                   <div className="mt-2 flex items-center gap-2 text-[10px] text-[var(--text-tertiary)]">
-                    <span className="rounded-sm bg-white/5 px-1.5 py-0.5">v0.1.0</span>
+                    <span className="rounded-sm bg-white/5 px-1.5 py-0.5">v{APP_VERSION}</span>
                     <span>·</span>
                     <span>Next.js 16 · GLM-4.6</span>
                   </div>
+
+                  {/* Update checker */}
+                  <div className="mt-3 flex items-center gap-2 border-t border-[var(--border-hairline)] pt-3">
+                    <button
+                      type="button"
+                      onClick={handleCheckUpdates}
+                      disabled={isCheckingUpdates}
+                      className="flex h-8 items-center gap-1.5 rounded-lg bg-[var(--neon-soft)] px-3 text-[11px] font-semibold text-[var(--neon)] transition-all hover:scale-105 disabled:opacity-50"
+                    >
+                      {isCheckingUpdates ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Download className="h-3 w-3" />
+                      )}
+                      {isCheckingUpdates ? "Checking…" : "Check for updates"}
+                    </button>
+                    {updateInfo?.hasUpdate && (
+                      <a
+                        href={updateInfo.releaseUrl || "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex h-8 items-center gap-1.5 rounded-lg bg-white/5 px-3 text-[11px] font-medium text-[var(--text-primary)] transition-colors hover:bg-white/10"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Download
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Last check timestamp */}
+                  {lastCheckTime && (
+                    <div className="mt-2 text-[9px] text-[var(--text-tertiary)]">
+                      Last checked: {lastCheckTime}
+                    </div>
+                  )}
                 </div>
               </Section>
             </div>
