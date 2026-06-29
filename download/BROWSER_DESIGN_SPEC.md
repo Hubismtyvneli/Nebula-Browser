@@ -158,6 +158,19 @@ Centered, Grok.com-inspired layout:
 - [x] Keyboard shortcuts overlay (⌘/)
 - [x] Split view — two tabs side-by-side in viewport
 
+### 4.5 Drag & Drop (added v0.2)
+- [x] **Tab reordering** — drag any tab pill left/right to reorder (dnd-kit + PointerSensor with 5px activation distance; keyboard-accessible via sortableKeyboardCoordinates)
+- [x] **Bookmark reordering** — drag bookmark chips to reorder (same dnd-kit setup, 4px activation distance)
+- [x] **OS file drop → open** — drag any file from the desktop onto the browser body; opens it in a new tab with a kind-aware renderer (image / video / audio / pdf / text / code)
+- [x] **OS file drop → attach to AI** — drag a file onto the AI sidebar; text/code files (<256KB) are read and embedded into the conversation as a user message with the first 8KB of content
+- [x] **Visual drop zone overlay** — when dragging OS files, a full-screen glass overlay appears with two neon-outlined zones (browser / AI) that highlight as the cursor enters them; uses `dragCounter` ref to handle enter/leave correctly
+- [x] **Omnibox URL drop** — drop any URL (or `text/uri-list`) onto the omnibox to navigate; auto-submits if it parses as a URL
+- [x] **Downloads drag-out** — each download row is `draggable`; dragging it sets `text/uri-list` and `text/plain` payloads (the blob URL) so it can be dropped onto the omnibox, the AI sidebar, or external apps
+- [x] **Real downloads store** — `addDownload`, `updateDownload`, `removeDownload`, `clearDownloads` with progress, status (completed / in_progress / paused / failed), file kind, blob URL, text preview
+- [x] **Local file preview** — dropped files render with type-specific viewers (img / video / audio / iframe-PDF / pre-formatted code) inside a glass card with a Summarize button
+
+
+
 ---
 
 ## 5. Component Architecture

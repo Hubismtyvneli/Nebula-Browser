@@ -17,6 +17,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useAIStore, type AIMode } from "@/lib/ai-store";
 import { useBrowserStore } from "@/lib/browser-store";
 import { AIMessage } from "./AIMessage";
+import { classifyFile, formatBytes, isAiAttachable, DOWNLOAD_KIND_LABEL } from "@/lib/files";
 import { cn } from "@/lib/utils";
 
 const MODES: { id: AIMode; label: string; icon: typeof Sparkles; hint: string }[] = [
@@ -197,6 +198,42 @@ export function AISidebar() {
     setThinking(false);
   };
 
+  /** Drop files directly onto the AI input. Reads text/code files and attaches them as context. */
+  const handleFileDrop = useCallback(
+    async (files: FileList) => {
+      const arr = Array.from(files);
+      if (arr.length === 0) return;
+      let convId = activeConversationId;
+      if (!convId) convId = newConversation();
+      setMode("chat");
+
+      for (const file of arr) {
+        const kind = classifyFile(file.name, file.type);
+        const label = DOWNLOAD_KIND_LABEL[kind];
+        const size = formatBytes(file.size);
+        const header = `Attached file: ${file.name} (${label}, ${size})`;
+        let body = "";
+        if (isAiAttachable(kind) && file.size < 256 * 1024) {
+          try {
+            const text = await file.slice(0, 8192).text();
+            body = `\n\n--- Begin file content (first ${text.length} chars) ---\n${text}\n--- End file content ---`;
+          } catch {
+            body = `\n\n(File could not be read.)`;
+          }
+        } else {
+          body = `\n\n(Binary file — content not attached.)`;
+        }
+        addMessage(convId, { role: "user", content: `${header}${body}` });
+      }
+
+      const hint = arr.length === 1
+        ? `I've attached a file called "${arr[0].name}". Please review it and tell me what you'd like to know.`
+        : `I've attached ${arr.length} files. Please review them and tell me what you'd like to know.`;
+      addMessage(convId, { role: "user", content: hint });
+    },
+    [activeConversationId, addMessage, newConversation, setMode]
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     sendMessage(input);
@@ -331,7 +368,24 @@ export function AISidebar() {
 
           {/* Input */}
           <div className="border-t border-[var(--border-hairline)] p-3">
-            <form onSubmit={handleSubmit} className="glass-flat flex items-end gap-2 rounded-2xl p-2">
+            <form
+              onSubmit={handleSubmit}
+              onDragOver={(e) => {
+                if (Array.from(e.dataTransfer.types).includes("Files")) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = "copy";
+                }
+              }}
+              onDrop={(e) => {
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleFileDrop(e.dataTransfer.files);
+                }
+              }}
+              className="glass-flat relative flex items-end gap-2 rounded-2xl p-2 transition-all"
+            >
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}

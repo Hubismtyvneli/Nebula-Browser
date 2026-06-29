@@ -10,6 +10,7 @@ import { SettingsPanel } from "./SettingsPanel";
 import { CommandPalette } from "./CommandPalette";
 import { HistoryPanel } from "./HistoryPanel";
 import { DownloadsPanel } from "./DownloadsPanel";
+import { FileDropZone } from "./FileDropZone";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useSettingsStore } from "@/lib/settings-store";
 
@@ -82,6 +83,9 @@ export function BrowserShell() {
       <HistoryPanel />
       <DownloadsPanel />
       <CommandPalette />
+
+      {/* Global file drop zone — appears only when dragging OS files over the window */}
+      <FileDropZone />
 
       {/* Status bar */}
       <StatusBar />

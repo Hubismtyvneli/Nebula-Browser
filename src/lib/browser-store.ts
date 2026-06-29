@@ -30,11 +30,30 @@ export interface HistoryEntry {
   visitedAt: number;
 }
 
+export type DownloadStatus = "completed" | "in_progress" | "paused" | "failed";
+export type DownloadKind = "image" | "pdf" | "text" | "video" | "audio" | "archive" | "code" | "file";
+
+export interface DownloadItem {
+  id: string;
+  name: string;
+  url: string;          // source URL or blob: URL
+  size: number;         // bytes
+  sizeLabel: string;    // pre-formatted, e.g. "4.2 MB"
+  kind: DownloadKind;
+  status: DownloadStatus;
+  progress: number;     // 0..100
+  startedAt: number;
+  completedAt?: number;
+  blobUrl?: string;     // object URL for preview / drag-out
+  textPreview?: string; // first ~2KB of text content (for AI attach)
+}
+
 interface BrowserState {
   tabs: Tab[];
   activeTabId: string | null;
   bookmarks: Bookmark[];
   history: HistoryEntry[];
+  downloads: DownloadItem[];
   isBookmarkBarOpen: boolean;
   isHistoryPanelOpen: boolean;
   isDownloadsPanelOpen: boolean;
@@ -55,10 +74,16 @@ interface BrowserState {
 
   addBookmark: (b: Omit<Bookmark, "id" | "createdAt">) => void;
   removeBookmark: (id: string) => void;
+  reorderBookmarks: (from: number, to: number) => void;
   isBookmarked: (url: string) => boolean;
 
   addHistory: (entry: Omit<HistoryEntry, "id" | "visitedAt">) => void;
   clearHistory: () => void;
+
+  addDownload: (d: Omit<DownloadItem, "id" | "startedAt">) => string;
+  updateDownload: (id: string, patch: Partial<DownloadItem>) => void;
+  removeDownload: (id: string) => void;
+  clearDownloads: () => void;
 
   toggleBookmarkBar: () => void;
   toggleHistoryPanel: (v?: boolean) => void;
@@ -98,6 +123,7 @@ export const useBrowserStore = create<BrowserState>()(
         { id: uid(), title: "Reddit",    url: "https://reddit.com",     favicon: "R", createdAt: Date.now() },
       ],
       history: [],
+      downloads: [],
       isBookmarkBarOpen: true,
       isHistoryPanelOpen: false,
       isDownloadsPanelOpen: false,
@@ -129,6 +155,7 @@ export const useBrowserStore = create<BrowserState>()(
       activateTab: (id) => set({ activeTabId: id }),
       reorderTabs: (from, to) =>
         set((s) => {
+          if (from === to || from < 0 || to < 0 || from >= s.tabs.length || to >= s.tabs.length) return s;
           const next = [...s.tabs];
           const [moved] = next.splice(from, 1);
           next.splice(to, 0, moved);
@@ -195,6 +222,14 @@ export const useBrowserStore = create<BrowserState>()(
         }),
       removeBookmark: (id) =>
         set((s) => ({ bookmarks: s.bookmarks.filter((b) => b.id !== id) })),
+      reorderBookmarks: (from, to) =>
+        set((s) => {
+          if (from === to || from < 0 || to < 0 || from >= s.bookmarks.length || to >= s.bookmarks.length) return s;
+          const next = [...s.bookmarks];
+          const [moved] = next.splice(from, 1);
+          next.splice(to, 0, moved);
+          return { bookmarks: next };
+        }),
       isBookmarked: (url) => get().bookmarks.some((b) => b.url === url),
 
       addHistory: (entry) =>
@@ -205,6 +240,26 @@ export const useBrowserStore = create<BrowserState>()(
           ].slice(0, 200),
         })),
       clearHistory: () => set({ history: [] }),
+
+      addDownload: (d) => {
+        const id = uid();
+        set((s) => ({
+          downloads: [
+            { ...d, id, startedAt: Date.now() },
+            ...s.downloads,
+          ].slice(0, 100),
+        }));
+        return id;
+      },
+      updateDownload: (id, patch) =>
+        set((s) => ({
+          downloads: s.downloads.map((d) => (d.id === id ? { ...d, ...patch } : d)),
+        })),
+      removeDownload: (id) =>
+        set((s) => ({
+          downloads: s.downloads.filter((d) => d.id !== id),
+        })),
+      clearDownloads: () => set({ downloads: [] }),
 
       toggleBookmarkBar: () =>
         set((s) => ({ isBookmarkBarOpen: !s.isBookmarkBarOpen })),
@@ -224,6 +279,7 @@ export const useBrowserStore = create<BrowserState>()(
       partialize: (s) => ({
         bookmarks: s.bookmarks,
         history: s.history,
+        downloads: s.downloads.filter((d) => !d.blobUrl), // blob URLs can't persist
         isBookmarkBarOpen: s.isBookmarkBarOpen,
         isAISidebarOpen: s.isAISidebarOpen,
       }),

@@ -205,7 +205,32 @@ function Omnibox({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex-1 px-2">
+    <form
+      onSubmit={handleSubmit}
+      className="flex-1 px-2"
+      onDragOver={(e) => {
+        // Allow drops of URLs / text onto the omnibox (but NOT Files — those go to the global drop zone)
+        if (Array.from(e.dataTransfer.types).some((t) => t === "text/uri-list" || t === "text/plain")) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = "copy";
+        }
+      }}
+      onDrop={(e) => {
+        const uri = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+        if (uri) {
+          e.preventDefault();
+          e.stopPropagation();
+          setValue(uri);
+          inputRef.current?.focus();
+          // Auto-submit if it's a URL
+          const parsed = normalizeOmniboxInput(uri);
+          if (parsed.type === "url") {
+            onNavigate(parsed.value);
+          }
+        }
+      }}
+    >
       <div
         className={cn(
           "group relative flex h-9 items-center gap-2 rounded-full px-3 transition-all duration-200",
@@ -231,7 +256,7 @@ function Omnibox({
             e.target.select();
           }}
           onBlur={() => setIsFocused(false)}
-          placeholder="Search the web or enter a URL"
+          placeholder="Search the web or enter a URL — drop a link here"
           className="flex-1 bg-transparent text-[13px] font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
           spellCheck={false}
           autoComplete="off"
