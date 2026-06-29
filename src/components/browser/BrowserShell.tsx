@@ -94,12 +94,13 @@ export function BrowserShell() {
     if (typeof window === "undefined" || !window.nebulaDesktop) return;
     const desktop = window.nebulaDesktop;
 
-    const downloadMap = new Map<string, string>(); // name → downloadId in store
+    // Map Electron download IDs → store download IDs
+    const downloadMap = new Map<string, string>();
 
     const offStarted = desktop.onDownloadStarted((data) => {
       const store = useBrowserStore.getState();
       const kind = classifyFile(data.name, data.mimeType);
-      const id = store.addDownload({
+      const storeId = store.addDownload({
         name: data.name,
         url: data.url,
         size: data.size,
@@ -108,15 +109,15 @@ export function BrowserShell() {
         status: "in_progress",
         progress: 0,
       });
-      downloadMap.set(data.name, id);
+      downloadMap.set(data.id, storeId);
       store.toggleDownloadsPanel(true); // auto-open the downloads panel
     });
 
     const offProgress = desktop.onDownloadProgress((data) => {
-      const id = downloadMap.get(data.name);
-      if (!id) return;
+      const storeId = downloadMap.get(data.id);
+      if (!storeId) return;
       const pct = data.total > 0 ? Math.round((data.received / data.total) * 100) : 0;
-      useBrowserStore.getState().updateDownload(id, {
+      useBrowserStore.getState().updateDownload(storeId, {
         progress: pct,
         size: data.total,
         sizeLabel: formatBytes(data.total),
@@ -124,14 +125,14 @@ export function BrowserShell() {
     });
 
     const offDone = desktop.onDownloadDone((data) => {
-      const id = downloadMap.get(data.name);
-      if (!id) return;
-      useBrowserStore.getState().updateDownload(id, {
+      const storeId = downloadMap.get(data.id);
+      if (!storeId) return;
+      useBrowserStore.getState().updateDownload(storeId, {
         status: data.state === "completed" ? "completed" : "failed",
         progress: data.state === "completed" ? 100 : 0,
         completedAt: Date.now(),
       });
-      downloadMap.delete(data.name);
+      downloadMap.delete(data.id);
     });
 
     return () => {

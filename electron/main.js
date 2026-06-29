@@ -203,50 +203,6 @@ function setupWebviewContextMenus() {
     // Only attach to webview contents (type === "webview")
     if (contents.getType() !== "webview") return;
 
-    // Handle downloads from this webview — forward progress to the renderer
-    contents.session.on("will-download", (event, item, webContents) => {
-      const filename = item.getFilename();
-      const url = item.getURL();
-      const totalBytes = item.getTotalBytes();
-      const mimeType = item.getMimeType();
-
-      // Notify the renderer that a download started
-      webContents.send("download-started", {
-        id: Math.random().toString(36).slice(2, 12),
-        name: filename,
-        url: url,
-        size: totalBytes,
-        mimeType: mimeType,
-      });
-
-      // Track progress
-      item.on("updated", (event, state) => {
-        if (state === "interrupted") {
-          webContents.send("download-progress", {
-            name: filename,
-            received: item.getReceivedBytes(),
-            total: totalBytes,
-            state: "interrupted",
-          });
-        } else if (state === "progressing") {
-          webContents.send("download-progress", {
-            name: filename,
-            received: item.getReceivedBytes(),
-            total: totalBytes,
-            state: "progressing",
-          });
-        }
-      });
-
-      item.once("done", (event, state) => {
-        webContents.send("download-done", {
-          name: filename,
-          state: state, // "completed" or "cancelled"
-          savePath: item.getSavePath(),
-        });
-      });
-    });
-
     contents.on("context-menu", (e, params) => {
       e.preventDefault();
       const menuItems = [];
@@ -350,6 +306,67 @@ function setupWebviewContextMenus() {
   });
 }
 
+/**
+ * Set up download handling on the default session.
+ * Attached ONCE (not per-webview) and sends all IPC to mainWindow.webContents
+ * (the Next.js renderer that hosts the downloads panel UI).
+ *
+ * Flow: user clicks download link in any webview → Electron shows save dialog
+ * (or auto-saves) → will-download fires → we forward start/progress/done to the UI.
+ */
+function setupDownloadHandler() {
+  session.defaultSession.on("will-download", (event, item, webContents) => {
+    const filename = item.getFilename();
+    const url = item.getURL();
+    const totalBytes = item.getTotalBytes();
+    const mimeType = item.getMimeType();
+    const downloadId = Math.random().toString(36).slice(2, 12);
+
+    // Send to the MAIN window's renderer (where the downloads panel lives),
+    // NOT to the webview that triggered the download
+    const target = mainWindow ? mainWindow.webContents : webContents;
+
+    target.send("download-started", {
+      id: downloadId,
+      name: filename,
+      url: url,
+      size: totalBytes,
+      mimeType: mimeType,
+    });
+
+    // Track progress
+    item.on("updated", (event, state) => {
+      const received = item.getReceivedBytes();
+      if (state === "interrupted") {
+        target.send("download-progress", {
+          id: downloadId,
+          name: filename,
+          received: received,
+          total: totalBytes,
+          state: "interrupted",
+        });
+      } else if (state === "progressing") {
+        target.send("download-progress", {
+          id: downloadId,
+          name: filename,
+          received: received,
+          total: totalBytes,
+          state: "progressing",
+        });
+      }
+    });
+
+    item.once("done", (event, state) => {
+      target.send("download-done", {
+        id: downloadId,
+        name: filename,
+        state: state, // "completed" or "cancelled"
+        savePath: item.getSavePath(),
+      });
+    });
+  });
+}
+
 app.whenReady().then(async () => {
   buildMenu();
 
@@ -360,6 +377,9 @@ app.whenReady().then(async () => {
 
   // Set up native context menus for all webviews (right-click on images, links, text, etc.)
   setupWebviewContextMenus();
+
+  // Set up download handling on the default session (attached once, sends to mainWindow)
+  setupDownloadHandler();
 
   if (!isDev) {
     await startNextServer();
