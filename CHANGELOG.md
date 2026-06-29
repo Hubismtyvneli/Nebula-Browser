@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - GitHub Actions CI workflow for automated builds on tag push
 
+## [0.3.1] — 2026-06-29
+
+### Test release
+This is a test update to verify the auto-update notification system works end-to-end. No new features, no bug fixes — just confirming that:
+- Pushing a tag triggers GitHub Actions to build installers
+- The update checker detects the new version
+- Existing users see the "New update available" popup with these release notes
+- The Download button links to the correct GitHub Release page
+
+If you're seeing this popup, the update system works! 🎉
+
 ## [0.3.0] — 2026-06-29
 
 ### Added
