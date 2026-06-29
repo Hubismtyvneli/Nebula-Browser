@@ -13,6 +13,10 @@ declare global {
       close: () => void;
       isMaximized: () => Promise<boolean>;
       onMaximizeChange: (cb: (isMaximized: boolean) => void) => () => void;
+      openExternal: (url: string) => void;
+      onDownloadStarted: (cb: (data: { id: string; name: string; url: string; size: number; mimeType: string }) => void) => () => void;
+      onDownloadProgress: (cb: (data: { name: string; received: number; total: number; state: string }) => void) => () => void;
+      onDownloadDone: (cb: (data: { name: string; state: string; savePath: string }) => void) => () => void;
     };
   }
 }

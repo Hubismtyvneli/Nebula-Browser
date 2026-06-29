@@ -203,6 +203,50 @@ function setupWebviewContextMenus() {
     // Only attach to webview contents (type === "webview")
     if (contents.getType() !== "webview") return;
 
+    // Handle downloads from this webview — forward progress to the renderer
+    contents.session.on("will-download", (event, item, webContents) => {
+      const filename = item.getFilename();
+      const url = item.getURL();
+      const totalBytes = item.getTotalBytes();
+      const mimeType = item.getMimeType();
+
+      // Notify the renderer that a download started
+      webContents.send("download-started", {
+        id: Math.random().toString(36).slice(2, 12),
+        name: filename,
+        url: url,
+        size: totalBytes,
+        mimeType: mimeType,
+      });
+
+      // Track progress
+      item.on("updated", (event, state) => {
+        if (state === "interrupted") {
+          webContents.send("download-progress", {
+            name: filename,
+            received: item.getReceivedBytes(),
+            total: totalBytes,
+            state: "interrupted",
+          });
+        } else if (state === "progressing") {
+          webContents.send("download-progress", {
+            name: filename,
+            received: item.getReceivedBytes(),
+            total: totalBytes,
+            state: "progressing",
+          });
+        }
+      });
+
+      item.once("done", (event, state) => {
+        webContents.send("download-done", {
+          name: filename,
+          state: state, // "completed" or "cancelled"
+          savePath: item.getSavePath(),
+        });
+      });
+    });
+
     contents.on("context-menu", (e, params) => {
       e.preventDefault();
       const menuItems = [];

@@ -11,8 +11,10 @@ import { CommandPalette } from "./CommandPalette";
 import { HistoryPanel } from "./HistoryPanel";
 import { DownloadsPanel } from "./DownloadsPanel";
 import { FileDropZone } from "./FileDropZone";
+import { OnboardingTutorial } from "./OnboardingTutorial";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useSettingsStore } from "@/lib/settings-store";
+import { formatBytes, classifyFile } from "@/lib/files";
 
 export function BrowserShell() {
   const newTab = useBrowserStore((s) => s.newTab);
@@ -87,6 +89,58 @@ export function BrowserShell() {
     return () => window.removeEventListener("keydown", handler);
   }, [newTab, closeTab, activeTabId, toggleCommandPalette, toggleAISidebar, toggleHistoryPanel, toggleSettings, tabs, activateTab, splitTabId, toggleSplit, closeSplit, swapSplitWithActive]);
 
+  // Listen for webview downloads (Electron only) — show them in the downloads panel
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.nebulaDesktop) return;
+    const desktop = window.nebulaDesktop;
+
+    const downloadMap = new Map<string, string>(); // name → downloadId in store
+
+    const offStarted = desktop.onDownloadStarted((data) => {
+      const store = useBrowserStore.getState();
+      const kind = classifyFile(data.name, data.mimeType);
+      const id = store.addDownload({
+        name: data.name,
+        url: data.url,
+        size: data.size,
+        sizeLabel: formatBytes(data.size),
+        kind,
+        status: "in_progress",
+        progress: 0,
+      });
+      downloadMap.set(data.name, id);
+      store.toggleDownloadsPanel(true); // auto-open the downloads panel
+    });
+
+    const offProgress = desktop.onDownloadProgress((data) => {
+      const id = downloadMap.get(data.name);
+      if (!id) return;
+      const pct = data.total > 0 ? Math.round((data.received / data.total) * 100) : 0;
+      useBrowserStore.getState().updateDownload(id, {
+        progress: pct,
+        size: data.total,
+        sizeLabel: formatBytes(data.total),
+      });
+    });
+
+    const offDone = desktop.onDownloadDone((data) => {
+      const id = downloadMap.get(data.name);
+      if (!id) return;
+      useBrowserStore.getState().updateDownload(id, {
+        status: data.state === "completed" ? "completed" : "failed",
+        progress: data.state === "completed" ? 100 : 0,
+        completedAt: Date.now(),
+      });
+      downloadMap.delete(data.name);
+    });
+
+    return () => {
+      offStarted();
+      offProgress();
+      offDone();
+    };
+  }, []);
+
   return (
     <div className="relative z-10 flex h-screen w-screen flex-col overflow-hidden">
       <ChromeBar />
@@ -105,6 +159,9 @@ export function BrowserShell() {
 
       {/* Global file drop zone — appears only when dragging OS files over the window */}
       <FileDropZone />
+
+      {/* First-open tutorial — shows on first launch, can be dismissed */}
+      <OnboardingTutorial />
 
       {/* Status bar */}
       <StatusBar />

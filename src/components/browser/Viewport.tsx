@@ -23,24 +23,69 @@ export function Viewport() {
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const splitTab = splitTabId ? tabs.find((t) => t.id === splitTabId) : null;
 
+  // Split view takes over the whole viewport when active
+  if (splitTab && activeTab && splitTab.id !== activeTab.id) {
+    return (
+      <div className="relative flex-1 overflow-hidden">
+        <SplitView leftTab={activeTab} rightTab={splitTab} />
+      </div>
+    );
+  }
+
+  // In Electron mode, keep ALL webviews mounted simultaneously so background tabs
+  // keep their state (audio keeps playing, video doesn't pause, scroll position
+  // is preserved, form inputs aren't lost). Only the active tab is visible;
+  // others are hidden with display:none but stay alive in the DOM.
+  if (isElectron()) {
+    return <BackgroundTabContainer tabs={tabs} activeTabId={activeTabId} />;
+  }
+
+  // In regular browser mode (no webview), use the simple animated single-view
   return (
     <div className="relative flex-1 overflow-hidden">
-      {splitTab && activeTab && splitTab.id !== activeTab.id ? (
-        <SplitView leftTab={activeTab} rightTab={splitTab} />
-      ) : (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab?.id ?? "empty"}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab?.id ?? "empty"}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          className="absolute inset-0 overflow-hidden"
+        >
+          <TabContent tab={activeTab} />
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * Renders ALL tabs simultaneously, keeping their webviews alive in the background.
+ * Only the active tab is visible; others are hidden via display:none.
+ * This preserves audio/video playback, scroll state, and form input when switching tabs.
+ */
+function BackgroundTabContainer({
+  tabs,
+  activeTabId,
+}: {
+  tabs: Tab[];
+  activeTabId: string | null;
+}) {
+  return (
+    <div className="relative flex-1 overflow-hidden">
+      {tabs.map((tab) => {
+        const isActive = tab.id === activeTabId;
+        return (
+          <div
+            key={tab.id}
             className="absolute inset-0 overflow-hidden"
+            style={{ display: isActive ? "block" : "none" }}
+            aria-hidden={!isActive}
           >
-            <TabContent tab={activeTab} />
-          </motion.div>
-        </AnimatePresence>
-      )}
+            <TabContent tab={tab} />
+          </div>
+        );
+      })}
     </div>
   );
 }

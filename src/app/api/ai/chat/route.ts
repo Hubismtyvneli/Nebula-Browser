@@ -54,16 +54,9 @@ function buildSystemPrompt(body: RequestBody): string {
   return base;
 }
 
-/**
- * Parse a single SSE-formatted buffer into data events.
- * Returns { events: string[], remainder: string } — caller should keep the remainder
- * and prepend it to the next chunk.
- */
 function parseSseBuffer(buf: string): { events: string[]; remainder: string } {
   const events: string[] = [];
-  // SSE events are separated by a blank line. Tolerate \n or \r\n.
   const parts = buf.split(/\n\n/);
-  // The last part is incomplete (no trailing \n\n); save it for next time.
   const remainder = parts.pop() ?? "";
   for (const part of parts) {
     const lines = part.split(/\n/);
@@ -101,71 +94,32 @@ export async function POST(req: NextRequest) {
       const send = (obj: unknown) =>
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
 
+      // Try Z.ai first (uses bundled .z-ai-config), fall back to Pollinations (free, no auth)
+      let succeeded = false;
       try {
-        const zai = await ZAI.create();
-        const completion: ReadableStream<Uint8Array> | unknown = await zai.chat.completions.create({
-          messages,
-          stream: true,
-          temperature: 0.7,
-          max_tokens: 1200,
-        });
-
-        // The SDK returns either a ReadableStream<Uint8Array> (streaming) OR a JSON object (non-streaming fallback).
-        if (completion && typeof (completion as ReadableStream).getReader === "function") {
-          const reader = (completion as ReadableStream<Uint8Array>).getReader();
-          const decoder = new TextDecoder();
-          let buf = "";
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buf += decoder.decode(value, { stream: true });
-            const { events, remainder } = parseSseBuffer(buf);
-            buf = remainder;
-            for (const data of events) {
-              if (data === "[DONE]") {
-                continue;
-              }
-              try {
-                const obj = JSON.parse(data);
-                const delta = obj?.choices?.[0]?.delta?.content ?? obj?.delta?.content ?? "";
-                if (delta) send({ delta });
-                if (obj?.error) send({ error: String(obj.error) });
-              } catch {
-                /* ignore malformed JSON */
-              }
-            }
-          }
-        } else if (completion && typeof completion === "object") {
-          // Non-streaming fallback — emit the full content as one delta.
-          const obj = completion as { choices?: Array<{ message?: { content?: string } }> };
-          const content = obj?.choices?.[0]?.message?.content ?? "";
-          if (content) send({ delta: content });
-        }
-        send({ done: true });
+        succeeded = await streamFromZai(messages, send);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Unknown error";
-        // Detect missing config and provide a helpful message
+        // If config is missing, skip straight to fallback (don't send error yet)
         if (message.includes("z-ai-config") || message.includes("Configuration file not found")) {
-          send({
-            error: "CONFIG_MISSING",
-            message: "Nebula AI needs a Z.ai config file to work. Create a file called `.z-ai-config` in your home directory or the app folder with your API credentials.",
-          });
-        } else if (message.includes("fetch failed") || message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT")) {
-          send({
-            error: "NETWORK_ERROR",
-            message: "Can't reach the Z.ai API. If you're on a corporate network or VPN, the internal API may not be accessible. Get your own API key at z.ai and update the .z-ai-config file to use the public endpoint: https://api.z.ai/api/paas/v4",
-          });
-        } else if (message.includes("401") || message.includes("403") || message.includes("Unauthorized") || message.includes("Forbidden")) {
-          send({
-            error: "AUTH_ERROR",
-            message: "The Z.ai API rejected the credentials. The bundled session token may have expired. Get your own API key at z.ai and update the .z-ai-config file.",
-          });
+          // Continue to fallback
         } else {
-          send({ error: message });
+          // For other Z.ai errors, try fallback before giving up
         }
-      } finally {
-        controller.close();
       }
+
+      if (!succeeded) {
+        // Fall back to Pollinations.ai — free, no API key, no signup required
+        try {
+          succeeded = await streamFromPollinations(messages, send);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          send({ error: `AI unavailable: ${message}` });
+        }
+      }
+
+      send({ done: true });
+      controller.close();
     },
   });
 
@@ -177,4 +131,111 @@ export async function POST(req: NextRequest) {
       "X-Accel-Buffering": "no",
     },
   });
+}
+
+/**
+ * Try to stream from Z.ai using the bundled .z-ai-config.
+ * Returns true on success, throws on error.
+ * If the config file is missing, throws a config error that the caller can catch.
+ */
+async function streamFromZai(
+  messages: Array<{ role: string; content: string }>,
+  send: (obj: unknown) => void
+): Promise<boolean> {
+  const zai = await ZAI.create();
+  const completion: ReadableStream<Uint8Array> | unknown = await zai.chat.completions.create({
+    messages,
+    stream: true,
+    temperature: 0.7,
+    max_tokens: 1200,
+  });
+
+  if (completion && typeof (completion as ReadableStream).getReader === "function") {
+    const reader = (completion as ReadableStream<Uint8Array>).getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    let gotAnyContent = false;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const { events, remainder } = parseSseBuffer(buf);
+      buf = remainder;
+      for (const data of events) {
+        if (data === "[DONE]") continue;
+        try {
+          const obj = JSON.parse(data);
+          const delta = obj?.choices?.[0]?.delta?.content ?? obj?.delta?.content ?? "";
+          if (delta) {
+            send({ delta });
+            gotAnyContent = true;
+          }
+        } catch {
+          /* ignore malformed JSON */
+        }
+      }
+    }
+    return true; // Successfully streamed from Z.ai
+  } else if (completion && typeof completion === "object") {
+    const obj = completion as { choices?: Array<{ message?: { content?: string } }> };
+    const content = obj?.choices?.[0]?.message?.content ?? "";
+    if (content) {
+      send({ delta: content });
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Stream from Pollinations.ai — a free, no-auth, no-signup LLM API.
+ * Uses the OpenAI-compatible endpoint at https://text.pollinations.ai/openai
+ * Models available: openai (gpt-oss-20b), mistral, llama, etc.
+ */
+async function streamFromPollinations(
+  messages: Array<{ role: string; content: string }>,
+  send: (obj: unknown) => void
+): Promise<boolean> {
+  const res = await fetch("https://text.pollinations.ai/openai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "openai",
+      messages,
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 1200,
+    }),
+  });
+
+  if (!res.ok || !res.body) {
+    throw new Error(`Pollinations returned HTTP ${res.status}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const { events, remainder } = parseSseBuffer(buf);
+    buf = remainder;
+    for (const data of events) {
+      if (data === "[DONE]") continue;
+      try {
+        const obj = JSON.parse(data);
+        // Pollinations uses OpenAI format: choices[0].delta.content
+        // Note: some chunks have "reasoning" instead of "content" — only send "content"
+        const delta = obj?.choices?.[0]?.delta?.content ?? "";
+        if (delta) {
+          send({ delta });
+        }
+      } catch {
+        /* ignore malformed JSON */
+      }
+    }
+  }
+  return true;
 }
