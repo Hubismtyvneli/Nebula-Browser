@@ -13,6 +13,8 @@ import { DownloadsPanel } from "./DownloadsPanel";
 import { FileDropZone } from "./FileDropZone";
 import { OnboardingTutorial } from "./OnboardingTutorial";
 import { UpdateNotification } from "./UpdateNotification";
+import { AuthModal } from "./AuthModal";
+import { useAuthStore } from "@/lib/auth-store";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useSettingsStore } from "@/lib/settings-store";
 import { formatBytes, classifyFile } from "@/lib/files";
@@ -32,6 +34,9 @@ export function BrowserShell() {
   const closeSplit = useBrowserStore((s) => s.closeSplit);
   const swapSplitWithActive = useBrowserStore((s) => s.swapSplitWithActive);
 
+  // Auth — initialize Supabase session listener on mount
+  const initializeAuth = useAuthStore((s) => s.initialize);
+
   // Settings → DOM attributes (accent / glass / motion)
   const accent = useSettingsStore((s) => s.accent);
   const glass = useSettingsStore((s) => s.glass);
@@ -47,6 +52,12 @@ export function BrowserShell() {
       html.removeAttribute("data-reduce-motion");
     }
   }, [accent, glass, reduceMotion]);
+
+  // Initialize Supabase auth listener on mount
+  useEffect(() => {
+    const unsub = initializeAuth();
+    return unsub;
+  }, [initializeAuth]);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -167,6 +178,9 @@ export function BrowserShell() {
 
       {/* Update notifier — checks GitHub on launch + every 30 min */}
       <UpdateNotification />
+
+      {/* Auth modal — sign in / sign up */}
+      <AuthModal />
 
       {/* Status bar */}
       <StatusBar />

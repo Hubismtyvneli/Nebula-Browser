@@ -1,10 +1,11 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Palette, Layers, Clock, Sparkles, Zap, Monitor, Sun, Moon, Type, Download, CheckCircle2, Loader2, ExternalLink } from "lucide-react";
+import { X, Palette, Layers, Clock, Sparkles, Zap, Monitor, Sun, Moon, Type, Download, CheckCircle2, Loader2, ExternalLink, User as UserIcon, LogOut, Cloud } from "lucide-react";
 import { useState } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useSettingsStore, type AccentName, type GlassIntensity } from "@/lib/settings-store";
+import { useAuthStore } from "@/lib/auth-store";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { checkForUpdatesManual, UpdateStatusBadge, APP_VERSION, type UpdateInfo } from "./UpdateNotification";
@@ -43,6 +44,12 @@ export function SettingsPanel() {
   const setReduceMotion = useSettingsStore((s) => s.setReduceMotion);
   const ntpWallpaper = useSettingsStore((s) => s.ntpWallpaper);
   const setNtpWallpaper = useSettingsStore((s) => s.setNtpWallpaper);
+
+  // Auth state
+  const user = useAuthStore((s) => s.user);
+  const isSignedIn = useAuthStore((s) => s.isSignedIn);
+  const openAuthModal = useAuthStore((s) => s.openAuthModal);
+  const signOut = useAuthStore((s) => s.signOut);
 
   // Update checker state
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
@@ -204,6 +211,76 @@ export function SettingsPanel() {
                   checked={reduceMotion}
                   onChange={setReduceMotion}
                 />
+              </Section>
+
+              {/* Account / Sync */}
+              <Section icon={<Cloud className="h-3.5 w-3.5" />} title="Account & Sync">
+                {isSignedIn && user ? (
+                  <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                        style={{ background: "var(--neon-soft)" }}
+                      >
+                        {user.user_metadata?.avatar_url ? (
+                          <img
+                            src={user.user_metadata.avatar_url}
+                            alt=""
+                            className="h-full w-full rounded-full object-cover"
+                          />
+                        ) : (
+                          <UserIcon className="h-4 w-4 text-[var(--neon)]" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13px] font-semibold text-[var(--text-primary)]">
+                          {user.user_metadata?.name || user.email?.split("@")[0] || "User"}
+                        </div>
+                        <div className="truncate text-[11px] text-[var(--text-tertiary)]">
+                          {user.email}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={signOut}
+                        className="flex h-8 items-center gap-1.5 rounded-lg bg-white/5 px-3 text-[11px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-white/8 hover:text-[#FF5F57]"
+                      >
+                        <LogOut className="h-3 w-3" />
+                        Sign out
+                      </button>
+                    </div>
+                    <div className="mt-2 text-[10px] text-[var(--text-tertiary)]">
+                      ✓ Bookmarks, history, and settings sync across devices
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <Cloud className="h-4 w-4 text-[var(--neon)]" />
+                      <div className="text-[13px] font-semibold text-[var(--text-primary)]">
+                        Sign in to sync
+                      </div>
+                    </div>
+                    <p className="mb-3 text-[11px] text-[var(--text-secondary)]">
+                      Sync your bookmarks, history, settings, and AI conversations across all your devices.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={openAuthModal}
+                      className="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg text-[11px] font-semibold transition-all"
+                      style={{
+                        background: "var(--neon-soft)",
+                        color: "var(--neon)",
+                        boxShadow: "0 0 12px var(--neon-soft)",
+                      }}
+                    >
+                      <UserIcon className="h-3 w-3" />
+                      Sign in or create account
+                    </button>
+                  </div>
+                )}
               </Section>
 
               {/* About */}

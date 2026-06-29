@@ -6,10 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned (v0.4.0)
-- Sign-in & data sync via Supabase (email + Google OAuth)
+### Planned (v0.4.0 remaining)
 - Wallpaper marketplace (static + animated, community-uploaded)
 - Plugin system (themes, sidebar panels, toolbar actions, AI extensions)
+- Real-time tab sync across devices
+
+## [0.4.0] — 2026-06-29 (alpha — auth only)
+
+### Added
+- **Sign-in & data sync via Supabase** — email/password, Google OAuth, GitHub OAuth
+  - `AuthModal` component with sign-in / sign-up toggle
+  - `auth-store.ts` Zustand store with session listener
+  - Supabase client libraries (browser + server)
+  - Account section in Settings panel showing user avatar, email, sign-out
+  - "Sign in to sync" CTA for unsigned users
+  - Session persists across app restarts
+- `.env` and `.env.example` for Supabase credentials
+- `@supabase/supabase-js` and `@supabase/ssr` dependencies
+
+### Planned for full v0.4.0
+- Bookmark + history + settings sync (wired to Supabase tables)
+- Wallpaper marketplace UI
+- Plugin system + marketplace
 - Real-time tab sync across devices
 
 ## [0.3.4] — 2026-06-29
