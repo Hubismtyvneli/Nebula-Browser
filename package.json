@@ -1,7 +1,9 @@
 {
-  "name": "nextjs_tailwind_shadcn_ts",
-  "version": "0.2.0",
+  "name": "nebula-browser",
+  "version": "0.3.0",
   "private": true,
+  "description": "Nebula Browser — a minimalistic, liquid-glass browser interface with built-in GLM AI.",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
@@ -10,7 +12,69 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "electron:dev": "concurrently -k -n NEXT,ELECTRON -c cyan,magenta \"bun run dev\" \"wait-on tcp:3000 && cross-env NODE_ENV=development electron electron/main.js\"",
+    "electron:build": "bun run build && electron-builder",
+    "electron:build:win": "bun run build && electron-builder --win",
+    "electron:build:mac": "bun run build && electron-builder --mac",
+    "electron:build:linux": "bun run build && electron-builder --linux",
+    "electron:start": "cross-env NODE_ENV=production electron electron/main.js"
+  },
+  "build": {
+    "appId": "com.nebula.browser",
+    "productName": "Nebula Browser",
+    "directories": {
+      "output": "release",
+      "buildResources": "electron/build-resources"
+    },
+    "files": [
+      "electron/**/*",
+      ".next/standalone/**/*",
+      ".next/static/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".next/static",
+        "to": ".next/static"
+      },
+      {
+        "from": "public",
+        "to": "public"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] },
+        { "target": "zip", "arch": ["arm64", "x64"] }
+      ],
+      "darkModeSupport": true,
+      "hardenedRuntime": false
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "artifactName": "Nebula-Browser-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] },
+        { "target": "deb", "arch": ["x64"] }
+      ],
+      "category": "Network",
+      "maintainer": "Nebula"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Nebula Browser"
+    }
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -85,10 +149,15 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "bun-types": "^1.3.4",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
     "eslint": "^9",
     "eslint-config-next": "^16.1.1",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.5",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^8.0.1"
   }
 }

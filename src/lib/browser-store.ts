@@ -111,32 +111,41 @@ interface BrowserState {
 const uid = () => Math.random().toString(36).slice(2, 10);
 const NTP_TITLE = "New Tab";
 
-function makeNewTab(): Tab {
+/**
+ * Deterministic ID generator for initial/default state.
+ * Uses a counter so server-rendered HTML matches client-rendered HTML
+ * (Math.random and Date.now cause hydration mismatches otherwise).
+ */
+let initCounter = 0;
+const initId = (prefix: string) => `${prefix}-${initCounter++}`;
+const INIT_TIME = 1700000000000; // fixed timestamp for default state
+
+function makeNewTab(id?: string): Tab {
   return {
-    id: uid(),
+    id: id ?? uid(),
     title: NTP_TITLE,
     url: "",
     favicon: "✦",
     status: "idle",
     history: [""],
     historyIndex: 0,
-    createdAt: Date.now(),
+    createdAt: INIT_TIME,
   };
 }
 
 export const useBrowserStore = create<BrowserState>()(
   persist(
     (set, get) => ({
-      tabs: [makeNewTab()],
-      activeTabId: null, // will be set on hydrate
+      tabs: [makeNewTab("tab-init")],
+      activeTabId: "tab-init",
       splitTabId: null,
       bookmarks: [
-        { id: uid(), title: "GitHub",    url: "https://github.com",     favicon: "G", createdAt: Date.now() },
-        { id: uid(), title: "YouTube",   url: "https://youtube.com",    favicon: "Y", createdAt: Date.now() },
-        { id: uid(), title: "X",         url: "https://x.com",          favicon: "X", createdAt: Date.now() },
-        { id: uid(), title: "Hacker News", url: "https://news.ycombinator.com", favicon: "N", createdAt: Date.now() },
-        { id: uid(), title: "Wikipedia", url: "https://wikipedia.org",  favicon: "W", createdAt: Date.now() },
-        { id: uid(), title: "Reddit",    url: "https://reddit.com",     favicon: "R", createdAt: Date.now() },
+        { id: initId("bm"), title: "GitHub",      url: "https://github.com",            favicon: "G", createdAt: INIT_TIME },
+        { id: initId("bm"), title: "YouTube",     url: "https://youtube.com",           favicon: "Y", createdAt: INIT_TIME },
+        { id: initId("bm"), title: "X",           url: "https://x.com",                 favicon: "X", createdAt: INIT_TIME },
+        { id: initId("bm"), title: "Hacker News", url: "https://news.ycombinator.com",  favicon: "N", createdAt: INIT_TIME },
+        { id: initId("bm"), title: "Wikipedia",   url: "https://wikipedia.org",         favicon: "W", createdAt: INIT_TIME },
+        { id: initId("bm"), title: "Reddit",      url: "https://reddit.com",            favicon: "R", createdAt: INIT_TIME },
       ],
       history: [],
       downloads: [],

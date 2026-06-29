@@ -44,7 +44,19 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-useless-escape": "off",
   },
 }, {
-  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
+  ignores: [
+    "node_modules/**",
+    ".next/**",
+    "out/**",
+    "build/**",
+    "release/**",
+    "dist/**",
+    "next-env.d.ts",
+    "examples/**",
+    "skills",
+    "electron/**", // Electron main process uses CommonJS require() by design
+    "scripts/**",
+  ],
 }];
 
 export default eslintConfig;
