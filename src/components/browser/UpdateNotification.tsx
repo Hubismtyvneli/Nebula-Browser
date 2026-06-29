@@ -16,8 +16,8 @@ interface UpdateInfo {
 }
 
 const APP_VERSION = "0.3.0";
-// CONFIG: Change this to your GitHub repo (must match the API route)
-const GITHUB_REPO = "nebula-browser/nebula-browser";
+// Your GitHub repo — update checker fetches the latest release from here
+const GITHUB_REPO = "Hubismtyvneli/Nebula-Browser";
 
 export function UpdateNotification() {
   const [update, setUpdate] = useState<UpdateInfo | null>(null);

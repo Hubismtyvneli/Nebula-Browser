@@ -63,8 +63,8 @@ A minimalistic, liquid-glass desktop browser with built-in GLM AI. Built with Ne
 
 ### Install & run
 ```bash
-git clone https://github.com/YOUR_USERNAME/nebula-browser.git
-cd nebula-browser
+git clone https://github.com/Hubismtyvneli/Nebula-Browser.git
+cd Nebula-Browser
 bun install
 bun run electron:dev
 ```

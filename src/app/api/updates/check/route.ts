@@ -19,9 +19,8 @@ interface GitHubRelease {
   }>;
 }
 
-// CONFIG: Change this to your GitHub repo when you create it
-// For now it points to a placeholder — update this after `git push`
-const GITHUB_REPO = "nebula-browser/nebula-browser";
+// Your GitHub repo — update checker fetches the latest release from here
+const GITHUB_REPO = "Hubismtyvneli/Nebula-Browser";
 
 /**
  * GET /api/updates/check?current=0.3.0
