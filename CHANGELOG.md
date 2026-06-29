@@ -11,7 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Plugin system (themes, sidebar panels, toolbar actions, AI extensions)
 - Real-time tab sync across devices
 
-## [0.4.0] — 2026-06-29 (alpha — auth only)
+## [0.4.1] — 2026-06-29
+
+### Added
+- **Data sync via Supabase** — bookmarks, settings, and history now sync across devices
+  - `supabase/migrations/0001_initial_schema.sql` — SQL migration for bookmarks, settings, and history tables with Row Level Security (users can only access their own data)
+  - `src/lib/sync.ts` — sync library with pull/push functions for all data types
+  - `src/lib/use-data-sync.ts` — React hook that auto-syncs on sign-in and on local changes
+  - On sign-in: pulls remote data → merges into local store (remote wins on conflict)
+  - On local change: pushes to remote (debounced 500ms for bookmarks/settings)
+  - History entries sync on add
+  - Sync runs silently in the background — no UI interruption
+  - Works offline — local data preserved when signed out
+
+### Optimized
+- New tab lag spike fixed — CSS animation for logo rotation instead of Framer Motion
+- Reduced staggered animation delays on New Tab Page (0.6s → 0.2s)
+- Tab close animation simplified — clean fade + width collapse (open animation unchanged)
+
+## [0.4.0] — 2026-06-29 (auth only)
 
 ### Added
 - **Sign-in & data sync via Supabase** — email/password, Google OAuth, GitHub OAuth

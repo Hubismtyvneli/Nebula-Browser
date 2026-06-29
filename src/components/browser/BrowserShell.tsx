@@ -15,6 +15,7 @@ import { OnboardingTutorial } from "./OnboardingTutorial";
 import { UpdateNotification } from "./UpdateNotification";
 import { AuthModal } from "./AuthModal";
 import { useAuthStore } from "@/lib/auth-store";
+import { useDataSync } from "@/lib/use-data-sync";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useSettingsStore } from "@/lib/settings-store";
 import { formatBytes, classifyFile } from "@/lib/files";
@@ -36,6 +37,9 @@ export function BrowserShell() {
 
   // Auth — initialize Supabase session listener on mount
   const initializeAuth = useAuthStore((s) => s.initialize);
+
+  // Data sync — pushes/pulls bookmarks, settings, history to Supabase when signed in
+  useDataSync();
 
   // Settings → DOM attributes (accent / glass / motion)
   const accent = useSettingsStore((s) => s.accent);
