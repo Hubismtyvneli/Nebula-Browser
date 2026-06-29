@@ -44,29 +44,21 @@ function TabPill({ tab, active, isSplit, onClick, onClose }: TabPillProps) {
     <motion.div
       ref={setNodeRef}
       layout
-      layoutId={`tab-${tab.id}`}
       onClick={onClick}
-      initial={{ opacity: 0, scale: 0.85, y: -8 }}
+      initial={{ opacity: 0, scale: 0.92 }}
       animate={{
         opacity: 1,
         scale: 1,
-        y: 0,
         ...(transform
           ? { x: transform.x, y: transform.y, scale: isDragging ? 1.05 : 1 }
           : {}),
       }}
       exit={{
         opacity: 0,
-        width: 0,
-        minWidth: 0,
-        padding: 0,
-        margin: 0,
-        transition: {
-          duration: 0.2,
-          ease: [0.22, 1, 0.36, 1],
-        },
+        scale: 0.92,
+        transition: { duration: 0.12, ease: "easeOut" },
       }}
-      transition={transition ?? { type: "spring", stiffness: 420, damping: 32, mass: 0.8 }}
+      transition={transition ?? { type: "spring", stiffness: 500, damping: 35, mass: 0.7 }}
       whileHover={isDragging ? undefined : { y: -1, transition: { duration: 0.15 } }}
       whileTap={isDragging ? undefined : { scale: 0.97, transition: { duration: 0.1 } }}
       style={{

@@ -4,19 +4,41 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Mail, Lock, User, Loader2, Sparkles, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { useAuthStore } from "@/lib/auth-store";
-import { cn } from "@/lib/utils";
 
 type Mode = "signin" | "signup";
 
 export function AuthModal() {
   const isOpen = useAuthStore((s) => s.isAuthModalOpen);
   const close = useAuthStore((s) => s.closeAuthModal);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[110] flex items-center justify-center p-6"
+        >
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={close} />
+          <AuthModalInner key="open" onClose={close} />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function AuthModalInner({ onClose }: { onClose: () => void }) {
   const signInWithEmail = useAuthStore((s) => s.signInWithEmail);
   const signUpWithEmail = useAuthStore((s) => s.signUpWithEmail);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
   const signInWithGithub = useAuthStore((s) => s.signInWithGithub);
 
   const [mode, setMode] = useState<Mode>("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
@@ -35,238 +57,87 @@ export function AuthModal() {
   const handleGoogle = async () => {
     setOauthLoading("google");
     const result = await signInWithGoogle();
-    if (result.error) {
-      setError(result.error);
-      setOauthLoading(null);
-    }
+    if (result.error) { setError(result.error); setOauthLoading(null); }
   };
 
   const handleGithub = async () => {
     setOauthLoading("github");
     const result = await signInWithGithub();
-    if (result.error) {
-      setError(result.error);
-      setOauthLoading(null);
-    }
+    if (result.error) { setError(result.error); setOauthLoading(null); }
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[110] flex items-center justify-center p-6"
-        >
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-md"
-            onClick={close}
-          />
+    <motion.div
+      initial={{ scale: 0.92, y: 16, opacity: 0 }}
+      animate={{ scale: 1, y: 0, opacity: 1 }}
+      exit={{ scale: 0.92, y: 16, opacity: 0 }}
+      transition={{ type: "spring", stiffness: 320, damping: 28 }}
+      className="glass-strong relative w-full max-w-md overflow-hidden rounded-2xl"
+    >
+      <div className="h-0.5 w-full" style={{ background: "linear-gradient(90deg, transparent, var(--neon), transparent)", boxShadow: "0 0 12px var(--neon-soft)" }} />
 
-          {/* Modal */}
-          <motion.div
-            initial={{ scale: 0.92, y: 16, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.92, y: 16, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 320, damping: 28 }}
-            className="glass-strong relative w-full max-w-md overflow-hidden rounded-2xl"
-          >
-            {/* Neon top accent */}
-            <div
-              className="h-0.5 w-full"
-              style={{
-                background: "linear-gradient(90deg, transparent, var(--neon), transparent)",
-                boxShadow: "0 0 12px var(--neon-soft)",
-              }}
-            />
+      <button type="button" onClick={onClose} className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-white/5 hover:text-[var(--text-primary)]" aria-label="Close">
+        <X className="h-4 w-4" />
+      </button>
 
-            {/* Close button */}
-            <button
-              type="button"
-              onClick={close}
-              className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-tertiary)] transition-colors hover:bg-white/5 hover:text-[var(--text-primary)]"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-
-            <div className="px-7 pb-7 pt-8">
-              {/* Logo + title */}
-              <div className="mb-6 flex flex-col items-center text-center">
-                <motion.div
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: "spring", stiffness: 280, damping: 20 }}
-                  className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl"
-                  style={{
-                    background: "var(--neon-soft)",
-                    boxShadow: "0 0 24px var(--neon-soft)",
-                  }}
-                >
-                  <Sparkles className="h-5 w-5 text-[var(--neon)]" />
-                </motion.div>
-                <h2 className="text-[20px] font-semibold tracking-tight text-[var(--text-primary)]">
-                  {mode === "signin" ? "Welcome back" : "Create your account"}
-                </h2>
-                <p className="mt-1 text-[12px] text-[var(--text-secondary)]">
-                  {mode === "signin"
-                    ? "Sign in to sync your bookmarks, history, and settings"
-                    : "Join Nebula to sync across all your devices"}
-                </p>
-              </div>
-
-              {/* OAuth buttons */}
-              <div className="mb-5 space-y-2">
-                <button
-                  type="button"
-                  onClick={handleGoogle}
-                  disabled={oauthLoading !== null}
-                  className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[var(--border-hairline)] bg-white/5 text-[13px] font-medium text-[var(--text-primary)] transition-all hover:bg-white/8 disabled:opacity-50"
-                >
-                  {oauthLoading === "google" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <GoogleIcon />
-                  )}
-                  Continue with Google
-                </button>
-                <button
-                  type="button"
-                  onClick={handleGithub}
-                  disabled={oauthLoading !== null}
-                  className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[var(--border-hairline)] bg-white/5 text-[13px] font-medium text-[var(--text-primary)] transition-all hover:bg-white/8 disabled:opacity-50"
-                >
-                  {oauthLoading === "github" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <GithubIcon />
-                  )}
-                  Continue with GitHub
-                </button>
-              </div>
-
-              {/* Divider */}
-              <div className="mb-5 flex items-center gap-3">
-                <div className="h-px flex-1 bg-[var(--border-hairline)]" />
-                <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">or</span>
-                <div className="h-px flex-1 bg-[var(--border-hairline)]" />
-              </div>
-
-              {/* Email form */}
-              <form onSubmit={handleSubmit} className="space-y-3">
-                {mode === "signup" && (
-                  <InputField
-                    icon={<User className="h-3.5 w-3.5" />}
-                    type="text"
-                    placeholder="Name (optional)"
-                    value={name}
-                    onChange={setName}
-                    required={false}
-                  />
-                )}
-                <InputField
-                  icon={<Mail className="h-3.5 w-3.5" />}
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={setEmail}
-                  required
-                />
-                <InputField
-                  icon={<Lock className="h-3.5 w-3.5" />}
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={setPassword}
-                  required
-                  minLength={6}
-                />
-
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-lg bg-[#FF5F57]/10 px-3 py-2 text-[11px] text-[#FF5F57]"
-                  >
-                    {error}
-                  </motion.div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="flex h-10 w-full items-center justify-center gap-2 rounded-lg text-[13px] font-semibold transition-all disabled:opacity-50"
-                  style={{
-                    background: "var(--neon-soft)",
-                    color: "var(--neon)",
-                    boxShadow: "0 0 12px var(--neon-soft)",
-                  }}
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      {mode === "signin" ? "Sign in" : "Create account"}
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </>
-                  )}
-                </button>
-              </form>
-
-              {/* Toggle mode */}
-              <div className="mt-5 text-center text-[12px] text-[var(--text-secondary)]">
-                {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode(mode === "signin" ? "signup" : "signin");
-                    setError(null);
-                  }}
-                  className="font-semibold text-[var(--neon)] hover:underline"
-                >
-                  {mode === "signin" ? "Sign up" : "Sign in"}
-                </button>
-              </div>
-            </div>
+      <div className="px-7 pb-7 pt-8">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 280, damping: 20 }} className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: "var(--neon-soft)", boxShadow: "0 0 24px var(--neon-soft)" }}>
+            <Sparkles className="h-5 w-5 text-[var(--neon)]" />
           </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          <h2 className="text-[20px] font-semibold tracking-tight text-[var(--text-primary)]">{mode === "signin" ? "Welcome back" : "Create your account"}</h2>
+          <p className="mt-1 text-[12px] text-[var(--text-secondary)]">{mode === "signin" ? "Sign in to sync your bookmarks, history, and settings" : "Join Nebula to sync across all your devices"}</p>
+        </div>
+
+        <div className="mb-5 space-y-2">
+          <button type="button" onClick={handleGoogle} disabled={oauthLoading !== null} className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[var(--border-hairline)] bg-white/5 text-[13px] font-medium text-[var(--text-primary)] transition-all hover:bg-white/8 disabled:opacity-50">
+            {oauthLoading === "google" ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
+            Continue with Google
+          </button>
+          <button type="button" onClick={handleGithub} disabled={oauthLoading !== null} className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[var(--border-hairline)] bg-white/5 text-[13px] font-medium text-[var(--text-primary)] transition-all hover:bg-white/8 disabled:opacity-50">
+            {oauthLoading === "github" ? <Loader2 className="h-4 w-4 animate-spin" /> : <GithubIcon />}
+            Continue with GitHub
+          </button>
+        </div>
+
+        <div className="mb-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-[var(--border-hairline)]" />
+          <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">or</span>
+          <div className="h-px flex-1 bg-[var(--border-hairline)]" />
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {mode === "signup" && (
+            <InputField icon={<User className="h-3.5 w-3.5" />} type="text" placeholder="Name (optional)" value={name} onChange={setName} required={false} />
+          )}
+          <InputField icon={<Mail className="h-3.5 w-3.5" />} type="email" placeholder="Email" value={email} onChange={setEmail} required />
+          <InputField icon={<Lock className="h-3.5 w-3.5" />} type="password" placeholder="Password" value={password} onChange={setPassword} required minLength={6} />
+
+          {error && (
+            <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg bg-[#FF5F57]/10 px-3 py-2 text-[11px] text-[#FF5F57]">{error}</motion.div>
+          )}
+
+          <button type="submit" disabled={isLoading} className="flex h-10 w-full items-center justify-center gap-2 rounded-lg text-[13px] font-semibold transition-all disabled:opacity-50" style={{ background: "var(--neon-soft)", color: "var(--neon)", boxShadow: "0 0 12px var(--neon-soft)" }}>
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (<>{mode === "signin" ? "Sign in" : "Create account"}<ArrowRight className="h-3.5 w-3.5" /></>)}
+          </button>
+        </form>
+
+        <div className="mt-5 text-center text-[12px] text-[var(--text-secondary)]">
+          {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
+          <button type="button" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(null); }} className="font-semibold text-[var(--neon)] hover:underline">
+            {mode === "signin" ? "Sign up" : "Sign in"}
+          </button>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
-function InputField({
-  icon,
-  type,
-  placeholder,
-  value,
-  onChange,
-  required,
-  minLength,
-}: {
-  icon: React.ReactNode;
-  type: string;
-  placeholder: string;
-  value: string;
-  onChange: (v: string) => void;
-  required?: boolean;
-  minLength?: number;
-}) {
+function InputField({ icon, type, placeholder, value, onChange, required, minLength }: { icon: React.ReactNode; type: string; placeholder: string; value: string; onChange: (v: string) => void; required?: boolean; minLength?: number; }) {
   return (
     <div className="flex h-10 items-center gap-2 rounded-lg border border-[var(--border-hairline)] bg-white/5 px-3 transition-colors focus-within:border-[var(--neon-soft)]">
       <span className="text-[var(--text-tertiary)]">{icon}</span>
-      <input
-        type={type}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-        minLength={minLength}
-        className="flex-1 bg-transparent text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
-      />
+      <input type={type} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} required={required} minLength={minLength} className="flex-1 bg-transparent text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]" />
     </div>
   );
 }
