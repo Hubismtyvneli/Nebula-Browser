@@ -195,11 +195,12 @@ export function SettingsPanel() {
                     <div
                       className="h-10 w-10 shrink-0 rounded-lg border border-[var(--border-hairline)]"
                       style={{
-                        background: activeWallpaper?.type === "gradient" && activeWallpaper?.gradientCss
+                        backgroundImage: activeWallpaper?.type === "gradient" && activeWallpaper?.gradientCss
                           ? activeWallpaper.gradientCss
                           : activeWallpaper?.fileUrl
                             ? `url(${activeWallpaper.fileUrl})`
-                            : "var(--bg-canvas)",
+                            : "none",
+                        backgroundColor: "var(--bg-canvas)",
                         backgroundSize: "cover",
                         backgroundPosition: "center",
                       }}
