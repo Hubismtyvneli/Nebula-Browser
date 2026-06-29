@@ -6,7 +6,7 @@
  *   server as a child process and loads http://127.0.0.1:3000 once ready.
  */
 
-const { app, BrowserWindow, shell, Menu, ipcMain, session } = require("electron");
+const { app, BrowserWindow, shell, Menu, ipcMain, session, clipboard, webContents } = require("electron");
 const { spawn } = require("child_process");
 const path = require("path");
 const net = require("net");
@@ -191,6 +191,121 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+/**
+ * Set up native right-click context menus for all <webview> elements.
+ * Listens for web-contents-created events and attaches context-menu handlers
+ * that show relevant actions (copy, paste, save image, open link, etc.)
+ * based on what was right-clicked.
+ */
+function setupWebviewContextMenus() {
+  const { app: electronApp } = require("electron");
+  electronApp.on("web-contents-created", (event, contents) => {
+    // Only attach to webview contents (type === "webview")
+    if (contents.getType() !== "webview") return;
+
+    contents.on("context-menu", (e, params) => {
+      e.preventDefault();
+      const menuItems = [];
+
+      // Text selection actions
+      if (params.selectionText) {
+        menuItems.push({
+          label: "Copy",
+          role: "copy",
+        });
+        menuItems.push({
+          label: "Search for \"" + params.selectionText.slice(0, 30) + (params.selectionText.length > 30 ? "…" : "") + "\"",
+          click: () => {
+            const url = "https://www.google.com/search?q=" + encodeURIComponent(params.selectionText);
+            shell.openExternal(url);
+          },
+        });
+      }
+
+      // Link actions
+      if (params.linkURL) {
+        if (menuItems.length > 0) menuItems.push({ type: "separator" });
+        menuItems.push({
+          label: "Open link in new window",
+          click: () => shell.openExternal(params.linkURL),
+        });
+        menuItems.push({
+          label: "Copy link address",
+          click: () => clipboard.writeText(params.linkURL),
+        });
+      }
+
+      // Image actions
+      if (params.mediaType === "image") {
+        if (menuItems.length > 0) menuItems.push({ type: "separator" });
+        menuItems.push({
+          label: "Open image in new window",
+          click: () => shell.openExternal(params.srcURL),
+        });
+        menuItems.push({
+          label: "Copy image address",
+          click: () => clipboard.writeText(params.srcURL),
+        });
+        menuItems.push({
+          label: "Save image as…",
+          click: () => {
+            // Trigger a download of the image
+            contents.downloadURL(params.srcURL);
+          },
+        });
+      }
+
+      // Video/audio actions
+      if (params.mediaType === "video" || params.mediaType === "audio") {
+        if (menuItems.length > 0) menuItems.push({ type: "separator" });
+        menuItems.push({
+          label: "Copy media address",
+          click: () => clipboard.writeText(params.srcURL),
+        });
+      }
+
+      // Clipboard paste (if input field)
+      if (params.isEditable) {
+        if (menuItems.length > 0) menuItems.push({ type: "separator" });
+        menuItems.push({ label: "Cut", role: "cut" });
+        menuItems.push({ label: "Copy", role: "copy" });
+        menuItems.push({ label: "Paste", role: "paste" });
+        menuItems.push({ label: "Select All", role: "selectAll" });
+      }
+
+      // Navigation actions
+      if (menuItems.length > 0) menuItems.push({ type: "separator" });
+      menuItems.push({
+        label: "Back",
+        enabled: contents.navigationHistory ? contents.navigationHistory.canGoBack() : false,
+        click: () => contents.goBack(),
+      });
+      menuItems.push({
+        label: "Forward",
+        enabled: contents.navigationHistory ? contents.navigationHistory.canGoForward() : false,
+        click: () => contents.goForward(),
+      });
+      menuItems.push({
+        label: "Reload",
+        click: () => contents.reload(),
+      });
+
+      // Developer tools (only in dev mode)
+      if (isDev) {
+        menuItems.push({ type: "separator" });
+        menuItems.push({
+          label: "Inspect Element",
+          click: () => contents.inspectElement(params.x, params.y),
+        });
+      }
+
+      if (menuItems.length > 0) {
+        Menu.buildFromTemplate(menuItems).popup(contents);
+      }
+    });
+  });
+}
+
 app.whenReady().then(async () => {
   buildMenu();
 
@@ -198,6 +313,9 @@ app.whenReady().then(async () => {
   session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
     callback({ cancel: false });
   });
+
+  // Set up native context menus for all webviews (right-click on images, links, text, etc.)
+  setupWebviewContextMenus();
 
   if (!isDev) {
     await startNextServer();

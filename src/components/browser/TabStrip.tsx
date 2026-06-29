@@ -45,24 +45,25 @@ function TabPill({ tab, active, isSplit, onClick, onClose }: TabPillProps) {
       layout
       layoutId={`tab-${tab.id}`}
       onClick={onClick}
-      initial={{ opacity: 0, scale: 0.85, y: -4 }}
+      initial={{ opacity: 0, scale: 0.9, y: -6 }}
       animate={{
         opacity: 1,
         scale: 1,
         y: 0,
         ...(transform
-          ? { x: transform.x, y: transform.y, scale: isDragging ? 1.04 : 1 }
+          ? { x: transform.x, y: transform.y, scale: isDragging ? 1.05 : 1 }
           : {}),
       }}
-      exit={{ opacity: 0, scale: 0.85, width: 0, marginRight: 0, transition: { duration: 0.18 } }}
-      transition={transition ?? { type: "spring", stiffness: 380, damping: 30 }}
-      whileHover={isDragging ? undefined : { y: -1 }}
+      exit={{ opacity: 0, scale: 0.9, width: 0, marginRight: 0, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
+      transition={transition ?? { type: "spring", stiffness: 420, damping: 32, mass: 0.8 }}
+      whileHover={isDragging ? undefined : { y: -1, transition: { duration: 0.15 } }}
+      whileTap={isDragging ? undefined : { scale: 0.97, transition: { duration: 0.1 } }}
       style={{
         zIndex: isDragging ? 50 : active ? 10 : 1,
         cursor: isDragging ? "grabbing" : "pointer",
       }}
       className={cn(
-        "group relative flex h-8 min-w-[120px] max-w-[200px] cursor-pointer items-center gap-2 rounded-lg px-3 no-drag touch-none",
+        "group relative flex h-8 flex-1 min-w-[80px] max-w-[220px] cursor-pointer items-center gap-2 rounded-lg px-3 no-drag touch-none",
         "transition-colors duration-200",
         active
           ? "bg-white/10 text-[var(--text-primary)]"
@@ -98,7 +99,7 @@ function TabPill({ tab, active, isSplit, onClick, onClose }: TabPillProps) {
       <div
         {...attributes}
         {...listeners}
-        className="flex h-full flex-1 items-center gap-2"
+        className="flex h-full min-w-0 flex-1 items-center gap-2"
       >
         {/* Favicon / spinner */}
         <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[11px] font-semibold">
@@ -109,8 +110,8 @@ function TabPill({ tab, active, isSplit, onClick, onClose }: TabPillProps) {
           )}
         </span>
 
-        {/* Title */}
-        <span className="flex-1 truncate text-[12px] font-medium leading-none">
+        {/* Title — truncates with ellipsis when too long */}
+        <span className="min-w-0 flex-1 truncate text-[12px] font-medium leading-none">
           {tab.title || "New Tab"}
         </span>
       </div>
@@ -160,7 +161,7 @@ export function TabStrip() {
   };
 
   return (
-    <div className="flex h-11 flex-1 items-center gap-1 overflow-x-auto px-2 scroll-nebula no-drag">
+    <div className="flex h-11 min-w-0 flex-1 items-center gap-1 overflow-x-auto px-2 scroll-nebula no-drag">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}

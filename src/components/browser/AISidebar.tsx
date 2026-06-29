@@ -146,7 +146,16 @@ export function AISidebar() {
               if (obj.delta) {
                 appendToMessage(convId!, assistantId, obj.delta);
               } else if (obj.error) {
-                appendToMessage(convId!, assistantId, `\n\n[error: ${obj.error}]`);
+                // Handle config-missing error with a helpful message
+                if (obj.error === "CONFIG_MISSING") {
+                  appendToMessage(
+                    convId!,
+                    assistantId,
+                    "⚠️ **Nebula AI needs configuration**\n\nTo use the AI assistant, you need a Z.ai config file:\n\n1. Create a file called `.z-ai-config` in your home directory\n2. Add your API credentials in JSON format\n\nExample:\n```\n{\n  \"apiKey\": \"your-api-key\",\n  \"baseUrl\": \"https://api.z.ai/api/paas/v4\"\n}\n```\n\nRestart the app after creating the file."
+                  );
+                } else {
+                  appendToMessage(convId!, assistantId, `\n\n[error: ${obj.error}]`);
+                }
                 finishMessage(convId!, assistantId, { error: true });
                 return;
               } else if (obj.done) {
@@ -251,7 +260,7 @@ export function AISidebar() {
           initial={{ x: 380, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 380, opacity: 0 }}
-          transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ type: "spring", stiffness: 300, damping: 34, mass: 0.9 }}
           className="relative z-20 flex h-full w-[380px] shrink-0 flex-col border-l border-[var(--border-hairline)] bg-[var(--bg-surface)] backdrop-blur-2xl"
         >
           {/* Header */}

@@ -144,7 +144,15 @@ export async function POST(req: NextRequest) {
         send({ done: true });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Unknown error";
-        send({ error: message });
+        // Detect missing config and provide a helpful message
+        if (message.includes("z-ai-config") || message.includes("Configuration file not found")) {
+          send({
+            error: "CONFIG_MISSING",
+            message: "Nebula AI needs a Z.ai config file to work. Create a file called `.z-ai-config` in your home directory or the app folder with your API credentials.",
+          });
+        } else {
+          send({ error: message });
+        }
       } finally {
         controller.close();
       }

@@ -40,6 +40,14 @@ export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
   // Track the last URL we synced to the store, so we don't sync the same one twice
   const lastSyncedUrl = useRef<string>("");
 
+  // CRITICAL: Freeze the initial URL so React NEVER updates the <webview src> attribute.
+  // If we passed `url` directly, every internal navigation (clicking a link inside the
+  // page) would update the store → change the url prop → React updates src → webview
+  // reloads → ERR_ABORTED. By capturing it with useState(() => url), src is set once
+  // on mount and never changes. When the user types a NEW url, the parent remounts
+  // this component (via the navEpoch key), so the initializer captures the new value.
+  const [frozenUrl] = useState(() => url);
+
   const setTabStatus = useBrowserStore((s) => s.setTabStatus);
   const setTabTitle = useBrowserStore((s) => s.setTabTitle);
   const isAISidebarOpen = useBrowserStore((s) => s.isAISidebarOpen);
@@ -47,7 +55,7 @@ export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
   const setMode = useAIStore((s) => s.setMode);
   const newConversation = useAIStore((s) => s.newConversation);
 
-  const host = hostOf(url);
+  const host = hostOf(frozenUrl);
 
   // Register/unregister the webview so the Toolbar can call goBack/goForward/reload
   useEffect(() => {
@@ -119,7 +127,7 @@ export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
     wv.addEventListener("new-window", onNewWindow);
 
     // Mark the initial URL as already synced so we don't re-trigger a load
-    lastSyncedUrl.current = url;
+    lastSyncedUrl.current = frozenUrl;
 
     return () => {
       unregisterWebview(tabId);
@@ -156,11 +164,12 @@ export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
       )}
 
       {/* The actual webview — fills the entire viewport.
-          src is set ONCE on mount; subsequent navigations happen inside the
-          webview itself and are synced back to the store via events. */}
+          src is set ONCE on mount using frozenUrl (captured in a ref so React
+          never updates it). Subsequent navigations happen inside the webview
+          itself and are synced back to the store via events. */}
       <webview
         ref={webviewRef as React.RefObject<HTMLWebViewElement>}
-        src={url}
+        src={frozenUrl}
         className="h-full w-full"
         style={{ border: "none", display: "inline-flex" }}
         allowpopups="true"
@@ -184,7 +193,7 @@ export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
               {error}
             </p>
             <p className="mb-4 text-[11px] text-[var(--text-tertiary)]">
-              URL: {prettyUrl(url)}
+              URL: {prettyUrl(frozenUrl)}
             </p>
             <div className="flex justify-center gap-2">
               <button
@@ -202,8 +211,8 @@ export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
                 type="button"
                 onClick={() =>
                   window.nebulaDesktop?.openExternal
-                    ? window.nebulaDesktop.openExternal(url)
-                    : window.open(url, "_blank")
+                    ? window.nebulaDesktop.openExternal(frozenUrl)
+                    : window.open(frozenUrl, "_blank")
                 }
                 className="flex h-8 items-center gap-1.5 rounded-full bg-white/5 px-3 text-[11px] font-semibold text-[var(--text-primary)]"
               >
