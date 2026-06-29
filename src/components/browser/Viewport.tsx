@@ -9,7 +9,9 @@ import { useBrowserStore, type Tab } from "@/lib/browser-store";
 import { useAIStore } from "@/lib/ai-store";
 import { prettyUrl, faviconFor, hostOf } from "@/lib/url";
 import { classifyFile } from "@/lib/files";
+import { isElectron } from "@/lib/webview-registry";
 import { NewTabPage } from "./NewTabPage";
+import { WebviewView } from "./WebviewView";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 
@@ -44,8 +46,11 @@ export function Viewport() {
 }
 
 /**
- * Renders one tab's content (NTP / local file preview / web page preview).
- * Pure function of the tab — used both in single view and in split view.
+ * Renders one tab's content.
+ *  - Empty URL              → NewTabPage (Grok-style start page)
+ *  - blob:/data: URL        → LocalFilePreview (dropped files)
+ *  - http(s) URL + Electron → WebviewView (REAL web browsing via <webview>)
+ *  - http(s) URL + browser  → PagePreview (fallback card — can't iframe most sites)
  */
 function TabContent({ tab }: { tab: Tab | undefined }) {
   const isAISidebarOpen = useBrowserStore((s) => s.isAISidebarOpen);
@@ -69,6 +74,11 @@ function TabContent({ tab }: { tab: Tab | undefined }) {
   if (isBlob) {
     return <LocalFilePreview url={url} name={tab.title} onSummarize={handleSummarize} />;
   }
+  // In Electron, render a real webview so the user can actually browse the web
+  if (isElectron()) {
+    return <WebviewView tabId={tab.id} url={url} initialTitle={tab.title} />;
+  }
+  // In a regular browser, fall back to the preview card
   return <PagePreview url={url} title={tab.title} theme={theme ?? "dark"} onSummarize={handleSummarize} />;
 }
 

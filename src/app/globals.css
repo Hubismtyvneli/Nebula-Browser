@@ -324,6 +324,10 @@ html[data-glass="strong"] {
     -webkit-app-region: no-drag;
     user-select: none;
   }
+  /* Drag region for the top chrome bar (makes the frameless Electron window movable) */
+  .app-drag {
+    -webkit-app-region: drag;
+  }
   /* Subtle pulse for AI thinking */
   @keyframes nebula-pulse {
     0%, 100% { opacity: 0.4; transform: scale(0.9); }

@@ -12,7 +12,7 @@ export function ChromeBar() {
   const { resolvedTheme, setTheme } = useTheme();
 
   return (
-    <div className="relative z-30 flex h-11 items-stretch gap-1 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] backdrop-blur-xl">
+    <div className="app-drag relative z-30 flex h-11 items-stretch gap-1 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] backdrop-blur-xl">
       <div className="flex items-center">
         <TrafficLights />
       </div>

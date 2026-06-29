@@ -300,6 +300,30 @@ nebula-browser/
 
 ---
 
+## What's new in v0.3 (real web browsing + fixes)
+
+### Fixed: `bun: command not found: tee`
+The `dev` and `build` scripts no longer use Unix-only `tee` and `cp -r`. They now use cross-platform Node scripts (`scripts/dev.mjs`, `scripts/copy-assets.mjs`) that work on Windows, macOS, and Linux.
+
+### Fixed: Can't drag the window
+The top chrome bar (where the traffic lights / tabs live) is now a **drag region** — click and drag any empty space there to move the window. On Windows/Linux, the traffic light dots are now **functional window controls** (close = red, minimize = yellow, maximize/restore = green). On macOS, the native traffic lights are used.
+
+### Fixed: Search doesn't work (now a REAL browser)
+In Electron mode, Nebula now uses the `<webview>` tag to actually load web pages. When you type a search query or URL in the omnibox and hit Enter, the page loads **inside the browser** — you can interact with it, click links, scroll, log in, everything. No more "preview card" fallback.
+
+How it works:
+- `electron/main.js` enables `webviewTag: true` in the BrowserWindow config
+- `WebviewView.tsx` renders a `<webview>` element that loads the URL
+- Navigation events (`did-navigate`, `page-title-updated`, `did-start-loading`, `did-stop-loading`) sync back to the tab store so the omnibox, tab title, and loading spinner stay in sync
+- Back/Forward/Reload buttons call `webview.goBack()` / `goForward()` / `reload()` directly
+- Links with `target="_blank"` open in the user's default system browser via `shell.openExternal()`
+- In a regular browser (not Electron), the old PagePreview card is still shown as fallback
+
+### What the Autofill errors mean
+Those `[ERROR:CONSOLE] "Request Autofill.enable failed"` messages in the Electron console are **harmless DevTools noise** — they come from Chrome DevTools trying to enable the Autofill protocol, which isn't available in Electron. They don't affect functionality. You can ignore them.
+
+---
+
 ## 12. First-time setup checklist
 
 - [ ] `bun install` — install all deps including Electron + builder

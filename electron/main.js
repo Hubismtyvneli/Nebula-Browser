@@ -1,19 +1,14 @@
 /**
  * Nebula Browser — Electron main process.
  *
- * Strategy:
- *   - Dev mode  (NODE_ENV=development): Electron loads http://localhost:3000
- *     (the user runs `bun run dev` separately, or we spawn it).
- *   - Prod mode (NODE_ENV=production): Electron spawns the Next.js standalone
- *     server as a child process and loads http://localhost:3000 once it's ready.
- *
- * The Next.js app keeps its API routes (GLM chat, etc.) — Electron just wraps it.
+ * Dev mode  (NODE_ENV=development): Electron loads http://localhost:3000
+ * Prod mode (NODE_ENV=production):  Electron spawns the Next.js standalone
+ *   server as a child process and loads http://127.0.0.1:3000 once ready.
  */
 
-const { app, BrowserWindow, shell, Menu, session } = require("electron");
+const { app, BrowserWindow, shell, Menu, ipcMain, session } = require("electron");
 const { spawn } = require("child_process");
 const path = require("path");
-const http = require("http");
 const net = require("net");
 
 const isDev = process.env.NODE_ENV === "development" || !!process.env.VITE_DEV_SERVER_URL;
@@ -46,7 +41,6 @@ function waitForPort(port, host = "127.0.0.1", timeoutMs = 60000) {
 
 /** Spawn the Next.js standalone server in production mode. */
 async function startNextServer() {
-  // Path to the standalone server built by `next build`
   const standaloneDir = path.join(__dirname, "..", ".next", "standalone");
   const serverJs = path.join(standaloneDir, "server.js");
 
@@ -86,17 +80,44 @@ async function createWindow() {
     minHeight: 600,
     title: "Nebula Browser",
     backgroundColor: "#08080A",
-    titleBarStyle: "hiddenInset", // macOS-style traffic lights inset
-    frame: process.platform === "darwin", // frameless on Win/Linux for custom chrome
+    // macOS: hiddenInset gives us traffic lights + a draggable title bar area
+    // Windows/Linux: frameless — our React chrome bar provides the drag region + window controls
+    titleBarStyle: "hiddenInset",
+    frame: process.platform === "darwin",
     trafficLightPosition: { x: 12, y: 14 },
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
-      // Allow the in-app GLM fetches to use the system keychain if needed
+      sandbox: false, // needed for webview tag to work
+      webviewTag: true, // enable <webview> for real web browsing
       webSecurity: true,
     },
+  });
+
+  // Window control IPC handlers (for custom title bar on Windows/Linux)
+  ipcMain.on("window-minimize", () => mainWindow?.minimize());
+  ipcMain.on("window-maximize", () => {
+    if (mainWindow?.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow?.maximize();
+    }
+  });
+  ipcMain.on("window-close", () => mainWindow?.close());
+  ipcMain.handle("window-is-maximized", () => mainWindow?.isMaximized() ?? false);
+  ipcMain.on("open-external", (_event, url) => {
+    if (typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://"))) {
+      shell.openExternal(url);
+    }
+  });
+
+  // Notify renderer when maximize state changes (for toggle button UI)
+  mainWindow.on("maximize", () => {
+    mainWindow?.webContents.send("maximize-changed", true);
+  });
+  mainWindow.on("unmaximize", () => {
+    mainWindow?.webContents.send("maximize-changed", false);
   });
 
   // Open external links (target=_blank) in the user's default browser
@@ -172,6 +193,11 @@ function buildMenu() {
 app.whenReady().then(async () => {
   buildMenu();
 
+  // Suppress the harmless "Autofill.enable wasn't found" DevTools console errors
+  session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
+    callback({ cancel: false });
+  });
+
   if (!isDev) {
     await startNextServer();
     try {
@@ -180,7 +206,6 @@ app.whenReady().then(async () => {
       console.error("Failed to start Next.js server:", e);
     }
   } else {
-    // In dev, wait for the separately-started dev server
     try {
       await waitForPort(PORT, "127.0.0.1", 60000);
     } catch {

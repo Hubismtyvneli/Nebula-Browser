@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useAIStore } from "@/lib/ai-store";
 import { normalizeOmniboxInput, prettyUrl, searchUrl } from "@/lib/url";
+import { getWebview, isElectron } from "@/lib/webview-registry";
 import { cn } from "@/lib/utils";
 
 export function Toolbar() {
@@ -45,7 +46,9 @@ export function Toolbar() {
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
   // Simulate "loading" -> "idle" status transition so the spinner shows briefly
+  // (only in browser mode; in Electron the webview drives loading state)
   useEffect(() => {
+    if (isElectron()) return;
     if (!activeTab || activeTab.status !== "loading") return;
     const t = setTimeout(() => setTabStatus(activeTab.id, "idle"), 700);
     return () => clearTimeout(t);
@@ -55,6 +58,32 @@ export function Toolbar() {
   const canGoForward = !!activeTab && activeTab.historyIndex < activeTab.history.length - 1;
   const bookmarked = activeTab ? isBookmarked(activeTab.url) : false;
 
+  // In Electron, delegate back/forward/reload to the actual webview element
+  const handleBack = () => {
+    if (!activeTab) return;
+    if (isElectron()) {
+      const wv = getWebview(activeTab.id);
+      if (wv && wv.canGoBack()) { wv.goBack(); return; }
+    }
+    goBack(activeTab.id);
+  };
+  const handleForward = () => {
+    if (!activeTab) return;
+    if (isElectron()) {
+      const wv = getWebview(activeTab.id);
+      if (wv && wv.canGoForward()) { wv.goForward(); return; }
+    }
+    goForward(activeTab.id);
+  };
+  const handleReload = () => {
+    if (!activeTab) return;
+    if (isElectron()) {
+      const wv = getWebview(activeTab.id);
+      if (wv) { wv.reload(); return; }
+    }
+    reloadTab(activeTab.id);
+  };
+
   return (
     <div className="relative z-20 flex h-13 items-center gap-1 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-2 backdrop-blur-xl">
       {/* Nav cluster */}
@@ -62,18 +91,18 @@ export function Toolbar() {
         <ToolbarButton
           icon={<ArrowLeft className="h-4 w-4" />}
           disabled={!canGoBack}
-          onClick={() => activeTab && goBack(activeTab.id)}
+          onClick={handleBack}
           label="Back"
         />
         <ToolbarButton
           icon={<ArrowRight className="h-4 w-4" />}
           disabled={!canGoForward}
-          onClick={() => activeTab && goForward(activeTab.id)}
+          onClick={handleForward}
           label="Forward"
         />
         <ToolbarButton
           icon={<RotateCw className="h-4 w-4" />}
-          onClick={() => activeTab && reloadTab(activeTab.id)}
+          onClick={handleReload}
           label="Reload"
         />
       </div>

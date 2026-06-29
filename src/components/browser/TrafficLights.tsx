@@ -1,37 +1,85 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 
-const lights = [
-  { color: "#FF5F57", glyph: "×", label: "Close" },
-  { color: "#FEBC2E", glyph: "−", label: "Minimize" },
-  { color: "#28C840", glyph: "+", label: "Maximize" },
-];
+declare global {
+  interface Window {
+    nebulaDesktop?: {
+      isElectron: boolean;
+      platform: string;
+      minimize: () => void;
+      maximize: () => void;
+      close: () => void;
+      isMaximized: () => Promise<boolean>;
+      onMaximizeChange: (cb: (isMaximized: boolean) => void) => () => void;
+    };
+  }
+}
 
 export function TrafficLights() {
+  // Compute platform once — no setState needed since it never changes during the session
+  const [isMac] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const desktop = window.nebulaDesktop;
+    return desktop?.platform === "darwin" || (!desktop && typeof process !== "undefined" && process.platform === "darwin");
+  });
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  useEffect(() => {
+    const desktop = typeof window !== "undefined" ? window.nebulaDesktop : undefined;
+    if (!desktop) return;
+
+    desktop.isMaximized().then(setIsMaximized);
+    const unsub = desktop.onMaximizeChange(setIsMaximized);
+    return unsub;
+  }, []);
+
+  // On macOS, the OS provides real traffic lights (via titleBarStyle: hiddenInset).
+  // Render a spacer so the tab strip aligns correctly.
+  if (isMac) {
+    return <div className="flex h-full w-[72px] shrink-0" aria-hidden />;
+  }
+
+  // On Windows/Linux, render functional window controls on the RIGHT side.
+  // The parent ChromeBar already has app-drag, so these buttons use no-drag.
   return (
     <div className="flex items-center gap-2 pl-3 pr-2 no-drag" aria-hidden>
-      {lights.map((l, i) => (
+      {/* Left: decorative dots (for the macOS aesthetic) */}
+      <div className="flex items-center gap-2">
         <motion.button
-          key={l.label}
           type="button"
-          className="group relative h-3 w-3 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: l.color }}
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.92 }}
-          title={l.label}
-          initial={{ opacity: 0, scale: 0.6 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.05 * i, type: "spring", stiffness: 320, damping: 22 }}
+          onClick={() => window.nebulaDesktop?.close()}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          className="h-3 w-3 rounded-full bg-[#FF5F57] flex items-center justify-center"
+          title="Close"
         >
-          <span
-            className="text-[8px] font-bold leading-none text-black/70 opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ marginTop: -1 }}
-          >
-            {l.glyph}
+          <span className="text-[8px] font-bold leading-none text-black/60 opacity-0 hover:opacity-100">×</span>
+        </motion.button>
+        <motion.button
+          type="button"
+          onClick={() => window.nebulaDesktop?.minimize()}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          className="h-3 w-3 rounded-full bg-[#FEBC2E] flex items-center justify-center"
+          title="Minimize"
+        >
+          <span className="text-[8px] font-bold leading-none text-black/60 opacity-0 hover:opacity-100">−</span>
+        </motion.button>
+        <motion.button
+          type="button"
+          onClick={() => window.nebulaDesktop?.maximize()}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          className="h-3 w-3 rounded-full bg-[#28C840] flex items-center justify-center"
+          title={isMaximized ? "Restore" : "Maximize"}
+        >
+          <span className="text-[8px] font-bold leading-none text-black/60 opacity-0 hover:opacity-100">
+            {isMaximized ? "❐" : "+"}
           </span>
         </motion.button>
-      ))}
+      </div>
     </div>
   );
 }
