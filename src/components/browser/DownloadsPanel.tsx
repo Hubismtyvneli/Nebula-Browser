@@ -111,6 +111,7 @@ export function DownloadsPanel() {
             )}
 
             <div className="max-h-[340px] overflow-y-auto scroll-nebula">
+              <AnimatePresence mode="popLayout">
               {filtered.length === 0 ? (
                 <div className="px-5 py-10 text-center">
                   <div className="mb-3 flex justify-center">
@@ -131,10 +132,11 @@ export function DownloadsPanel() {
                   return (
                     <motion.div
                       key={d.id}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: 12 }}
-                      transition={{ delay: i * 0.03 }}
+                      layout
+                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, x: 40, scale: 0.9, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } }}
+                      transition={{ delay: i * 0.04, type: "spring", stiffness: 320, damping: 28 }}
                       draggable
                       onDragStart={(e) => {
                         // Set the blob URL as the drag payload so other apps / the omnibox can accept it
@@ -145,9 +147,11 @@ export function DownloadsPanel() {
                         }
                         e.dataTransfer.setData("application/x-nebula-download", d.id);
                       }}
-                      className="group flex items-center gap-3 px-4 py-2.5 hover:bg-white/3"
+                      whileHover={{ scale: 1.01, transition: { duration: 0.15 } }}
+                      whileTap={{ scale: 0.99 }}
+                      className="group relative flex cursor-grab items-center gap-3 rounded-lg px-4 py-2.5 active:cursor-grabbing hover:bg-white/5"
                     >
-                      <span className="flex h-8 w-8 shrink-0 cursor-grab items-center justify-center rounded-lg bg-white/5 text-[var(--text-secondary)] active:cursor-grabbing">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-[var(--text-secondary)] transition-transform group-hover:scale-105">
                         <Icon className="h-4 w-4" />
                       </span>
                       <div className="min-w-0 flex-1">
@@ -172,10 +176,11 @@ export function DownloadsPanel() {
                         </div>
                         {!isDone && (
                           <div className="mt-1 h-0.5 w-full overflow-hidden rounded-full bg-white/5">
-                            <div
-                              className="h-full rounded-full bg-[var(--neon)] transition-all"
+                            <motion.div
+                              className="h-full rounded-full bg-[var(--neon)]"
+                              animate={{ width: `${d.progress}%` }}
+                              transition={{ duration: 0.3, ease: "easeOut" }}
                               style={{
-                                width: `${d.progress}%`,
                                 boxShadow: "0 0 6px var(--neon-soft)",
                               }}
                             />
@@ -256,6 +261,7 @@ export function DownloadsPanel() {
                   );
                 })
               )}
+              </AnimatePresence>
             </div>
 
             {/* Drop hint */}

@@ -1,6 +1,6 @@
 {
   "name": "nebula-browser",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Nebula Browser — a minimalistic, liquid-glass browser interface with built-in GLM AI.",
   "main": "electron/main.js",

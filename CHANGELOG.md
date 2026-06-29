@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - GitHub Actions CI workflow for automated builds on tag push
 
+## [0.3.2] — 2026-06-29
+
+### Fixed
+- **Split-screen divider** — rewrote with Pointer Events + setPointerCapture + requestAnimationFrame throttling. Dragging is now buttery smooth with no mouse escape issues; the divider glows neon while active and the grab handle animates size.
+- **Reload icon animation** — the reload button now spins continuously while a page is loading, with a smooth ease-out when loading completes.
+- **Tab close animation** — replaced the jarring width-collapse with a multi-stage exit: fade out → scale down → lift up → collapse width with eased timing. Tabs now close gracefully like iOS 26 app cards.
+- **Downloads drag animations** — download rows now have iOS-26-style spring physics on hover/tap, smooth slide-out exit animations (fade + slide right + scale), and animated progress bars that ease into their new width.
+
 ## [0.3.1] — 2026-06-29
 
 ### Test release

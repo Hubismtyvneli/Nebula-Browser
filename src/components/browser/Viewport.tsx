@@ -141,41 +141,70 @@ function TabContent({ tab }: { tab: Tab | undefined }) {
  * Split-view layout: two tabs side-by-side with a draggable neon divider.
  * The left pane shows the active tab; the right pane shows the split-pinned tab.
  * A small floating control bar at the top lets users swap sides or exit split.
+ *
+ * Divider dragging uses Pointer Events + setPointerCapture for smooth,
+ * jank-free resizing — the pointer is "captured" by the divider element so
+ * mousemove events keep firing even if the cursor leaves the element.
+ * State updates are batched via requestAnimationFrame to avoid layout thrash.
  */
 function SplitView({ leftTab, rightTab }: { leftTab: Tab; rightTab: Tab }) {
   const swapSplitWithActive = useBrowserStore((s) => s.swapSplitWithActive);
   const closeSplit = useBrowserStore((s) => s.closeSplit);
   const activateTab = useBrowserStore((s) => s.activateTab);
   const [splitPct, setSplitPct] = useState(50);
+  const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const draggingRef = useRef(false);
+  const dividerRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const targetPctRef = useRef(50);
 
-  // Drag divider to resize
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (!draggingRef.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const pct = ((e.clientX - rect.left) / rect.width) * 100;
-      setSplitPct(Math.min(80, Math.max(20, pct)));
-    };
-    const onUp = () => {
-      draggingRef.current = false;
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, []);
-
-  const startDrag = () => {
-    draggingRef.current = true;
+  // Pointer-based divider drag — smooth, no mouse escape issues
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dividerRef.current || !containerRef.current) return;
+    // Capture the pointer so mousemove keeps firing even outside the divider
+    dividerRef.current.setPointerCapture(e.pointerId);
+    setIsDragging(true);
     document.body.style.userSelect = "none";
     document.body.style.cursor = "col-resize";
+    e.preventDefault();
   };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    if (!dividerRef.current?.hasPointerCapture(e.pointerId)) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const pct = ((e.clientX - rect.left) / rect.width) * 100;
+    targetPctRef.current = Math.min(85, Math.max(15, pct));
+
+    // Throttle state updates to one per animation frame for buttery smoothness
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(() => {
+        setSplitPct(targetPctRef.current);
+        rafRef.current = null;
+      });
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dividerRef.current?.hasPointerCapture(e.pointerId)) {
+      dividerRef.current.releasePointerCapture(e.pointerId);
+    }
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    setIsDragging(false);
+    document.body.style.userSelect = "";
+    document.body.style.cursor = "";
+  };
+
+  // Cleanup any pending rAF on unmount
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
 
   return (
     <div ref={containerRef} className="absolute inset-0 flex">
@@ -190,21 +219,31 @@ function SplitView({ leftTab, rightTab }: { leftTab: Tab; rightTab: Tab }) {
         </div>
       </div>
 
-      {/* Divider */}
+      {/* Divider — wider hit area, pointer capture for smooth drag */}
       <div
-        onMouseDown={startDrag}
-        className="relative z-10 flex h-full w-1 cursor-col-resize items-center justify-center bg-[var(--border-hairline)] transition-colors hover:bg-[var(--neon)]"
-        style={{ boxShadow: "0 0 0 1px transparent" }}
+        ref={dividerRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        className="relative z-20 flex h-full w-1 cursor-col-resize items-center justify-center touch-none"
+        style={{
+          background: isDragging ? "var(--neon)" : "var(--border-hairline)",
+          boxShadow: isDragging ? "0 0 12px var(--neon-soft)" : "none",
+          transition: isDragging ? "none" : "background 0.15s",
+        }}
       >
+        {/* Invisible wider hit area for easier grabbing */}
+        <div className="absolute h-full w-3 cursor-col-resize" style={{ background: "transparent" }} />
+        {/* Neon grab handle */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.5 }}
-          whileHover={{ scale: 1.1 }}
-          className="absolute h-10 w-1 rounded-full bg-[var(--neon)]"
+          animate={{
+            height: isDragging ? 48 : 32,
+            opacity: isDragging ? 1 : 0.7,
+          }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          className="w-1 rounded-full bg-[var(--neon)]"
           style={{ boxShadow: "0 0 12px var(--neon-soft)" }}
-        />
-        <div
-          className="absolute h-16 w-1 cursor-col-resize"
-          style={{ background: "transparent" }}
         />
       </div>
 

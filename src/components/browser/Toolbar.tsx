@@ -101,7 +101,18 @@ export function Toolbar() {
           label="Forward"
         />
         <ToolbarButton
-          icon={<RotateCw className="h-4 w-4" />}
+          icon={
+            <motion.div
+              animate={activeTab?.status === "loading" ? { rotate: 360 } : { rotate: 0 }}
+              transition={
+                activeTab?.status === "loading"
+                  ? { duration: 0.8, repeat: Infinity, ease: "linear" }
+                  : { duration: 0.2 }
+              }
+            >
+              <RotateCw className="h-4 w-4" />
+            </motion.div>
+          }
           onClick={handleReload}
           label="Reload"
         />

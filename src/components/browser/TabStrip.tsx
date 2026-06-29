@@ -45,7 +45,7 @@ function TabPill({ tab, active, isSplit, onClick, onClose }: TabPillProps) {
       layout
       layoutId={`tab-${tab.id}`}
       onClick={onClick}
-      initial={{ opacity: 0, scale: 0.9, y: -6 }}
+      initial={{ opacity: 0, scale: 0.85, y: -8 }}
       animate={{
         opacity: 1,
         scale: 1,
@@ -54,13 +54,30 @@ function TabPill({ tab, active, isSplit, onClick, onClose }: TabPillProps) {
           ? { x: transform.x, y: transform.y, scale: isDragging ? 1.05 : 1 }
           : {}),
       }}
-      exit={{ opacity: 0, scale: 0.9, width: 0, marginRight: 0, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
+      exit={{
+        opacity: 0,
+        scale: 0.8,
+        y: -10,
+        width: 0,
+        minWidth: 0,
+        padding: 0,
+        margin: 0,
+        gap: 0,
+        transition: {
+          duration: 0.28,
+          ease: [0.22, 1, 0.36, 1],
+          opacity: { duration: 0.18 },
+          scale: { duration: 0.22 },
+          width: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
+        },
+      }}
       transition={transition ?? { type: "spring", stiffness: 420, damping: 32, mass: 0.8 }}
       whileHover={isDragging ? undefined : { y: -1, transition: { duration: 0.15 } }}
       whileTap={isDragging ? undefined : { scale: 0.97, transition: { duration: 0.1 } }}
       style={{
         zIndex: isDragging ? 50 : active ? 10 : 1,
         cursor: isDragging ? "grabbing" : "pointer",
+        transformOrigin: "center",
       }}
       className={cn(
         "group relative flex h-8 flex-1 min-w-[80px] max-w-[220px] cursor-pointer items-center gap-2 rounded-lg px-3 no-drag touch-none",
