@@ -58,23 +58,23 @@ export function NewTabPage() {
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-start overflow-y-auto scroll-nebula px-6 pt-20 pb-12">
-      {/* Logo */}
+      {/* Logo — CSS animation instead of Framer Motion for the rotation
+          (GPU-composited, no React re-renders, no lag spike on tab open) */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.7, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        initial={{ opacity: 0, scale: 0.85 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         className="relative mb-5"
       >
         <div className="relative h-16 w-16">
-          <motion.div
-            className="absolute inset-0 rounded-full"
+          <div
+            className="nebula-spin-slow absolute inset-0 rounded-full"
             style={{
               background:
                 "conic-gradient(from 0deg, var(--neon), transparent 40%, var(--neon-soft) 60%, transparent 80%, var(--neon))",
               filter: "blur(2px)",
+              willChange: "transform",
             }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
           />
           <div className="absolute inset-1 flex items-center justify-center rounded-full bg-[var(--bg-canvas)]">
             <Sparkles
@@ -85,18 +85,13 @@ export function NewTabPage() {
         </div>
       </motion.div>
 
-      <motion.h1
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15, duration: 0.5 }}
-        className="mb-1 text-[28px] font-semibold tracking-tight text-[var(--text-primary)]"
-      >
+      <h1 className="mb-1 text-[28px] font-semibold tracking-tight text-[var(--text-primary)]">
         Nebula
-      </motion.h1>
+      </h1>
       <motion.p
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.05, duration: 0.3 }}
         className="mb-8 text-[13px] text-[var(--text-secondary)]"
       >
         A calm place to think, search, and ask.
@@ -104,9 +99,9 @@ export function NewTabPage() {
 
       {/* Big omnibox */}
       <motion.form
-        initial={{ opacity: 0, y: 12, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ delay: 0.28, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
         onSubmit={(e) => {
           e.preventDefault();
           go(query);
@@ -116,7 +111,6 @@ export function NewTabPage() {
         <div className="glass-strong group relative flex h-14 items-center gap-3 rounded-2xl px-5 transition-all duration-300 focus-within:neon-ring">
           <Search className="h-5 w-5 text-[var(--text-tertiary)] group-focus-within:text-[var(--neon)] transition-colors" />
           <input
-            autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Ask anything or paste a URL…"
@@ -136,9 +130,9 @@ export function NewTabPage() {
 
       {/* Mode chips */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.5 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.15, duration: 0.3 }}
         className="mt-4 flex flex-wrap items-center justify-center gap-2"
       >
         {MODES.map((m) => (
@@ -158,18 +152,18 @@ export function NewTabPage() {
 
       {/* Quick links */}
       <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.55, duration: 0.55 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.3 }}
         className="mt-12 grid w-full max-w-2xl grid-cols-4 gap-3 sm:grid-cols-8"
       >
         {QUICK_LINKS.map((link, i) => (
           <motion.button
             key={link.url}
             type="button"
-            initial={{ opacity: 0, scale: 0.85 }}
+            initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.6 + i * 0.04, type: "spring", stiffness: 280, damping: 22 }}
+            transition={{ delay: 0.25 + i * 0.02, type: "spring", stiffness: 320, damping: 24 }}
             whileHover={{ y: -2, scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => {

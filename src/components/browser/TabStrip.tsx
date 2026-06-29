@@ -57,19 +57,13 @@ function TabPill({ tab, active, isSplit, onClick, onClose }: TabPillProps) {
       }}
       exit={{
         opacity: 0,
-        scale: 0.8,
-        y: -10,
         width: 0,
         minWidth: 0,
         padding: 0,
         margin: 0,
-        gap: 0,
         transition: {
-          duration: 0.28,
+          duration: 0.2,
           ease: [0.22, 1, 0.36, 1],
-          opacity: { duration: 0.18 },
-          scale: { duration: 0.22 },
-          width: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
         },
       }}
       transition={transition ?? { type: "spring", stiffness: 420, damping: 32, mass: 0.8 }}
