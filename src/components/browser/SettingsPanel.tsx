@@ -1,12 +1,13 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Palette, Layers, Clock, Sparkles, Zap, Monitor, Sun, Moon, Type, Download, CheckCircle2, Loader2, ExternalLink, User as UserIcon, LogOut, Cloud } from "lucide-react";
+import { X, Palette, Layers, Clock, Sparkles, Zap, Monitor, Sun, Moon, Type, Download, CheckCircle2, Loader2, ExternalLink, User as UserIcon, LogOut, Cloud, Puzzle, MonitorSmartphone } from "lucide-react";
 import { useState } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useSettingsStore, type AccentName, type GlassIntensity } from "@/lib/settings-store";
 import { useAuthStore } from "@/lib/auth-store";
 import { useWallpaperStore } from "@/lib/wallpaper-store";
+import { usePluginStore } from "@/lib/plugin-store";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { checkForUpdatesManual, UpdateStatusBadge, APP_VERSION, type UpdateInfo } from "./UpdateNotification";
@@ -48,6 +49,13 @@ export function SettingsPanel() {
   // Wallpaper state
   const activeWallpaper = useWallpaperStore((s) => s.wallpapers.find((w) => w.id === s.activeWallpaperId));
   const wallpaperCount = useWallpaperStore((s) => s.wallpapers.length);
+
+  // Plugin state
+  const enabledPlugins = usePluginStore((s) => s.plugins.filter((p) => p.isEnabled).length);
+  const totalPlugins = usePluginStore((s) => s.plugins.length);
+
+  // Device tabs state
+  const toggleDeviceTabs = useBrowserStore((s) => s.toggleDeviceTabs);
 
   // Update checker state
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
@@ -206,6 +214,60 @@ export function SettingsPanel() {
                     </div>
                   </div>
                   <span className="text-[11px] font-medium text-[var(--neon)]">Browse →</span>
+                </button>
+              </Section>
+
+              {/* Plugins */}
+              <Section icon={<Puzzle className="h-3.5 w-3.5" />} title="Plugins">
+                <button
+                  type="button"
+                  onClick={() => usePluginStore.getState().toggleMarketplace(true)}
+                  className="flex w-full items-center justify-between rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 text-left transition-colors hover:border-[var(--border-glass)]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/5 text-[18px]">
+                      🧩
+                    </div>
+                    <div>
+                      <div className="text-[12px] font-semibold text-[var(--text-primary)]">
+                        {enabledPlugins} plugin{enabledPlugins !== 1 ? "s" : ""} enabled
+                      </div>
+                      <div className="text-[10px] text-[var(--text-tertiary)]">
+                        {totalPlugins} total · Dark Reader, Screenshot, Notes, more
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-medium text-[var(--neon)]">Browse →</span>
+                </button>
+              </Section>
+
+              {/* Device tabs (real-time sync) */}
+              <Section icon={<MonitorSmartphone className="h-3.5 w-3.5" />} title="Tabs from other devices">
+                <button
+                  type="button"
+                  onClick={() => toggleDeviceTabs(true)}
+                  disabled={!isSignedIn}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 text-left transition-colors",
+                    isSignedIn ? "hover:border-[var(--border-glass)]" : "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/5">
+                      <MonitorSmartphone className="h-4 w-4 text-[var(--text-secondary)]" />
+                    </div>
+                    <div>
+                      <div className="text-[12px] font-semibold text-[var(--text-primary)]">
+                        {isSignedIn ? "View synced tabs" : "Sign in required"}
+                      </div>
+                      <div className="text-[10px] text-[var(--text-tertiary)]">
+                        {isSignedIn
+                          ? "See open tabs from your other devices"
+                          : "Sync tabs across all your devices"}
+                      </div>
+                    </div>
+                  </div>
+                  {isSignedIn && <span className="text-[11px] font-medium text-[var(--neon)]">View →</span>}
                 </button>
               </Section>
 

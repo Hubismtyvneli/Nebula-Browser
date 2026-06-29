@@ -64,6 +64,7 @@ interface BrowserState {
   isBookmarkBarOpen: boolean;
   isHistoryPanelOpen: boolean;
   isDownloadsPanelOpen: boolean;
+  isDeviceTabsOpen: boolean;
   isSettingsOpen: boolean;
   isCommandPaletteOpen: boolean;
   isAISidebarOpen: boolean;
@@ -108,6 +109,7 @@ interface BrowserState {
   toggleBookmarkBar: () => void;
   toggleHistoryPanel: (v?: boolean) => void;
   toggleDownloadsPanel: (v?: boolean) => void;
+  toggleDeviceTabs: (v?: boolean) => void;
   toggleSettings: (v?: boolean) => void;
   toggleCommandPalette: (v?: boolean) => void;
   toggleAISidebar: (v?: boolean) => void;
@@ -158,6 +160,7 @@ export const useBrowserStore = create<BrowserState>()(
       isBookmarkBarOpen: true,
       isHistoryPanelOpen: false,
       isDownloadsPanelOpen: false,
+      isDeviceTabsOpen: false,
       isSettingsOpen: false,
       isCommandPaletteOpen: false,
       isAISidebarOpen: true,
@@ -387,6 +390,8 @@ export const useBrowserStore = create<BrowserState>()(
         set((s) => ({ isHistoryPanelOpen: v ?? !s.isHistoryPanelOpen })),
       toggleDownloadsPanel: (v) =>
         set((s) => ({ isDownloadsPanelOpen: v ?? !s.isDownloadsPanelOpen })),
+      toggleDeviceTabs: (v) =>
+        set((s) => ({ isDeviceTabsOpen: v ?? !s.isDeviceTabsOpen })),
       toggleSettings: (v) =>
         set((s) => ({ isSettingsOpen: v ?? !s.isSettingsOpen })),
       toggleCommandPalette: (v) =>

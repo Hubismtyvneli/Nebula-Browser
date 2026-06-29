@@ -15,6 +15,8 @@ import { OnboardingTutorial } from "./OnboardingTutorial";
 import { UpdateNotification } from "./UpdateNotification";
 import { AuthModal } from "./AuthModal";
 import { WallpaperMarketplace } from "./WallpaperMarketplace";
+import { PluginMarketplace } from "./PluginMarketplace";
+import { DeviceTabsPanel } from "./DeviceTabsPanel";
 import { useAuthStore } from "@/lib/auth-store";
 import { useDataSync } from "@/lib/use-data-sync";
 import { useBrowserStore } from "@/lib/browser-store";
@@ -189,6 +191,12 @@ export function BrowserShell() {
 
       {/* Wallpaper marketplace panel */}
       <WallpaperMarketplace />
+
+      {/* Plugin marketplace panel */}
+      <PluginMarketplace />
+
+      {/* Device tabs panel (real-time sync) */}
+      <DeviceTabsPanel />
 
       {/* Status bar */}
       <StatusBar />

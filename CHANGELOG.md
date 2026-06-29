@@ -6,10 +6,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned (v0.4.0 remaining)
-- Plugin system (themes, sidebar panels, toolbar actions, AI extensions)
-- Real-time tab sync across devices
-- Community wallpaper upload + moderation
+### Planned (future)
+- Plugin sandbox runtime (window.nebula API)
+- Community plugin upload + moderation
+- Plugin permissions prompt on install
+
+## [0.4.3] — 2026-06-29
+
+### Added
+- **Plugin marketplace** — browse, install, and enable community plugins
+  - `supabase/migrations/0003_plugins_and_device_tabs.sql` — plugins table + storage bucket + device_tabs table (with realtime)
+  - `src/lib/plugin-store.ts` — Zustand store with 5 built-in plugins:
+    1. **Dark Reader** 🌙 — forces dark mode on all websites
+    2. **Screenshot Tool** 📸 — capture full-page screenshots
+    3. **QR Code Generator** 📱 — generate QR codes for the current URL
+    4. **Note Pad** 📝 — quick notes in a sidebar panel
+    5. **Clock & Timer** 🕐 — analog clock + pomodoro timer widget
+  - `PluginMarketplace.tsx` — browse/search/filter panel with category tabs (Sidebar, Toolbar, Themes, AI, Content, Widgets)
+  - Plugin cards show icon, name, type badge, description, rating, install count, version
+  - One-click install/enable/disable
+  - Plugins persist to localStorage (enabled state remembered)
+- **Real-time tab sync** — see open tabs from your other devices
+  - `DeviceTabsPanel.tsx` — shows tabs grouped by device (phone/laptop/desktop)
+  - Uses Supabase Realtime — updates live when you open a tab on another device
+  - Click any remote tab to open it on the current device
+  - Refresh button to manually re-fetch
+  - Settings panel → "Tabs from other devices" section (requires sign-in)
+- Settings panel: 3 new sections — Wallpaper, Plugins, Tabs from other devices
 
 ## [0.4.2] — 2026-06-29
 
