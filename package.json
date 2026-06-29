@@ -3,6 +3,7 @@
   "version": "0.3.2",
   "private": true,
   "description": "Nebula Browser — a minimalistic, liquid-glass browser interface with built-in GLM AI.",
+  "author": "Hubismtyvneli",
   "main": "electron/main.js",
   "scripts": {
     "dev": "node scripts/dev.mjs",
