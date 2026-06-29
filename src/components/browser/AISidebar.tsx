@@ -146,15 +146,28 @@ export function AISidebar() {
               if (obj.delta) {
                 appendToMessage(convId!, assistantId, obj.delta);
               } else if (obj.error) {
-                // Handle config-missing error with a helpful message
+                // Handle specific error types with helpful messages
+                const errorMsg = obj.message || obj.error;
                 if (obj.error === "CONFIG_MISSING") {
                   appendToMessage(
                     convId!,
                     assistantId,
                     "⚠️ **Nebula AI needs configuration**\n\nTo use the AI assistant, you need a Z.ai config file:\n\n1. Create a file called `.z-ai-config` in your home directory\n2. Add your API credentials in JSON format\n\nExample:\n```\n{\n  \"apiKey\": \"your-api-key\",\n  \"baseUrl\": \"https://api.z.ai/api/paas/v4\"\n}\n```\n\nRestart the app after creating the file."
                   );
+                } else if (obj.error === "NETWORK_ERROR") {
+                  appendToMessage(
+                    convId!,
+                    assistantId,
+                    "📡 **Can't reach the Z.ai API**\n\nThe bundled API endpoint may not be accessible from your network.\n\n**To fix this:**\n1. Get your own API key at [z.ai](https://z.ai)\n2. Open the `.z-ai-config` file in the app folder\n3. Replace its contents with:\n```\n{\n  \"apiKey\": \"your-api-key\",\n  \"baseUrl\": \"https://api.z.ai/api/paas/v4\"\n}\n```\n4. Restart the app"
+                  );
+                } else if (obj.error === "AUTH_ERROR") {
+                  appendToMessage(
+                    convId!,
+                    assistantId,
+                    "🔐 **API credentials rejected**\n\nThe bundled session token may have expired.\n\n**To fix this:**\n1. Get your own API key at [z.ai](https://z.ai)\n2. Open the `.z-ai-config` file in the app folder\n3. Replace its contents with:\n```\n{\n  \"apiKey\": \"your-api-key\",\n  \"baseUrl\": \"https://api.z.ai/api/paas/v4\"\n}\n```\n4. Restart the app"
+                  );
                 } else {
-                  appendToMessage(convId!, assistantId, `\n\n[error: ${obj.error}]`);
+                  appendToMessage(convId!, assistantId, `\n\n⚠️ ${errorMsg}`);
                 }
                 finishMessage(convId!, assistantId, { error: true });
                 return;

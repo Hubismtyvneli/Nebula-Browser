@@ -150,6 +150,16 @@ export async function POST(req: NextRequest) {
             error: "CONFIG_MISSING",
             message: "Nebula AI needs a Z.ai config file to work. Create a file called `.z-ai-config` in your home directory or the app folder with your API credentials.",
           });
+        } else if (message.includes("fetch failed") || message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT")) {
+          send({
+            error: "NETWORK_ERROR",
+            message: "Can't reach the Z.ai API. If you're on a corporate network or VPN, the internal API may not be accessible. Get your own API key at z.ai and update the .z-ai-config file to use the public endpoint: https://api.z.ai/api/paas/v4",
+          });
+        } else if (message.includes("401") || message.includes("403") || message.includes("Unauthorized") || message.includes("Forbidden")) {
+          send({
+            error: "AUTH_ERROR",
+            message: "The Z.ai API rejected the credentials. The bundled session token may have expired. Get your own API key at z.ai and update the .z-ai-config file.",
+          });
         } else {
           send({ error: message });
         }
