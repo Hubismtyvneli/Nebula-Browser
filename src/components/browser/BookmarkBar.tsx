@@ -19,7 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useBrowserStore, type Bookmark } from "@/lib/browser-store";
-import { faviconFor } from "@/lib/url";
+import { Favicon } from "./Favicon";
 import { cn } from "@/lib/utils";
 
 interface SortableBookmarkProps {
@@ -66,9 +66,7 @@ function SortableBookmark({ bookmark, onOpen, onRemove }: SortableBookmarkProps)
         onClick={() => onOpen(bookmark.url, bookmark.title)}
         className="flex h-full items-center gap-1.5"
       >
-        <span className="flex h-4 w-4 items-center justify-center rounded-sm bg-white/5 text-[10px] font-bold text-[var(--text-secondary)]">
-          {bookmark.favicon ?? faviconFor(bookmark.url)}
-        </span>
+        <Favicon url={bookmark.url} size={16} className="bg-white/5" />
         <span className="max-w-[120px] truncate text-[12px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
           {bookmark.title}
         </span>

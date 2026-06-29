@@ -20,6 +20,7 @@ import {
 import { useBrowserStore, type Tab } from "@/lib/browser-store";
 import { cn } from "@/lib/utils";
 import { TabContextMenu } from "./TabContextMenu";
+import { Favicon } from "./Favicon";
 
 interface TabPillProps {
   tab: Tab;
@@ -122,6 +123,8 @@ function TabPill({ tab, active, isSplit, onClick, onClose }: TabPillProps) {
         <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[11px] font-semibold">
           {tab.status === "loading" ? (
             <Loader2 className="h-3 w-3 animate-spin text-[var(--neon)]" />
+          ) : tab.url ? (
+            <Favicon url={tab.url} size={16} />
           ) : (
             <span className="text-[var(--text-secondary)]">{tab.favicon ?? "✦"}</span>
           )}

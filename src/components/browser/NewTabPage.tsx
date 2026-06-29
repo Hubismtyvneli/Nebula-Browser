@@ -5,7 +5,8 @@ import { Sparkles, Search, Code, Languages, FileText, Plus, Clock } from "lucide
 import { useState } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useAIStore } from "@/lib/ai-store";
-import { normalizeOmniboxInput, searchUrl, faviconFor, prettyUrl } from "@/lib/url";
+import { normalizeOmniboxInput, searchUrl, prettyUrl } from "@/lib/url";
+import { Favicon } from "./Favicon";
 
 const QUICK_LINKS = [
   { title: "GitHub",     url: "https://github.com",     favicon: "G", color: "#FFFFFF" },
@@ -179,8 +180,8 @@ export function NewTabPage() {
             className="group flex flex-col items-center gap-2"
             title={link.url}
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[16px] font-bold backdrop-blur-md transition-all group-hover:border-[var(--neon-soft)] group-hover:shadow-[0_0_20px_var(--neon-soft)]">
-              <span style={{ color: link.color }}>{link.favicon}</span>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] backdrop-blur-md transition-all group-hover:border-[var(--neon-soft)] group-hover:shadow-[0_0_20px_var(--neon-soft)]">
+              <Favicon url={link.url} size={28} />
             </div>
             <span className="max-w-[60px] truncate text-[11px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
               {link.title}
@@ -212,9 +213,7 @@ export function NewTabPage() {
                 onClick={() => activeTabId && navigateTab(activeTabId, h.url, h.title)}
                 className="glass flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-colors hover:border-[var(--neon-soft)]"
               >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/5 text-[11px] font-bold text-[var(--text-secondary)]">
-                  {faviconFor(h.url)}
-                </span>
+                <Favicon url={h.url} size={28} className="bg-white/5" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[12px] font-medium text-[var(--text-primary)]">
                     {h.title}

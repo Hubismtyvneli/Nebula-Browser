@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Clock, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
-import { prettyUrl, faviconFor } from "@/lib/url";
+import { prettyUrl } from "@/lib/url";
+import { Favicon } from "./Favicon";
 
 export function HistoryPanel() {
   const isOpen = useBrowserStore((s) => s.isHistoryPanelOpen);
@@ -126,9 +127,7 @@ export function HistoryPanel() {
                         }}
                         className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/5"
                       >
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/5 text-[10px] font-bold text-[var(--text-secondary)]">
-                          {faviconFor(h.url)}
-                        </span>
+                        <Favicon url={h.url} size={24} className="bg-white/5" />
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-[12px] font-medium text-[var(--text-primary)]">
                             {h.title}

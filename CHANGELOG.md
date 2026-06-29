@@ -6,8 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned (v0.4.0)
+- Sign-in & data sync via Supabase (email + Google OAuth)
+- Wallpaper marketplace (static + animated, community-uploaded)
+- Plugin system (themes, sidebar panels, toolbar actions, AI extensions)
+- Real-time tab sync across devices
+
+## [0.3.4] — 2026-06-29
+
+### Fixed
+- **AI markdown rendering** — replaced custom renderer with `react-markdown` + `remark-gfm`. Tables, lists, code blocks, blockquotes, links, and headings now render properly with Nebula styling. No more raw `| Type | When... |` text.
+- **Real website favicons** — new `Favicon` component uses Google's S2 favicon service (`https://www.google.com/s2/favicons?domain=...&sz=64`). Bookmarks, tabs, history, and quick links now show actual site icons instead of letter placeholders. Falls back to letter avatar if the favicon fails to load.
+
 ### Added
-- GitHub Actions CI workflow for automated builds on tag push
+- `remark-gfm` dependency for GitHub Flavored Markdown (tables, strikethrough, task lists)
+- `Favicon` component with error handling and letter fallback
+- v0.4.0 design document covering Supabase auth, wallpaper marketplace, and plugin system
 
 ## [0.3.2] — 2026-06-29
 
