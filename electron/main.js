@@ -110,8 +110,8 @@ async function createWindow() {
   // Screenshot plugin — capture the active webview as PNG
   ipcMain.handle("capture-screenshot", async () => {
     try {
-      // Find the active webview (the one that's visible)
-      const allWebContents = electronApp.getAllWebContents();
+      const { webContents: wcModule } = require("electron");
+      const allWebContents = wcModule.getAllWebContents();
       const webview = allWebContents.find((wc) => wc.getType() === "webview");
       if (!webview) return { error: "No web page open" };
       const image = await webview.capturePage();
@@ -130,8 +130,8 @@ async function createWindow() {
 
   // Dark Reader plugin — inject/remove dark CSS from all webviews
   ipcMain.on("dark-reader-enable", () => {
-    const { app: ea } = require("electron");
-    ea.getAllWebContents().forEach((wc) => {
+    const { webContents } = require("electron");
+    webContents.getAllWebContents().forEach((wc) => {
       if (wc.getType() === "webview") {
         try {
           wc.executeJavaScript("window.__nebula_dark_reader = true");
@@ -146,8 +146,8 @@ async function createWindow() {
     });
   });
   ipcMain.on("dark-reader-disable", () => {
-    const { app: ea } = require("electron");
-    ea.getAllWebContents().forEach((wc) => {
+    const { webContents } = require("electron");
+    webContents.getAllWebContents().forEach((wc) => {
       if (wc.getType() === "webview") {
         try {
           wc.executeJavaScript("window.__nebula_dark_reader = false; location.reload()");
