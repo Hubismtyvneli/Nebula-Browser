@@ -1,20 +1,16 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Trash2 } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { X, Plus } from "lucide-react";
+import { useRef, useState } from "react";
 import { useWidgetStore, type WidgetInstance, type WidgetType, WIDGET_DEFAULTS } from "@/lib/widget-store";
 import { WidgetPickerIOS } from "./WidgetPickerIOS";
 
 /**
- * Renders all user-placed widgets as draggable + resizable floating panels
- * on the New Tab Page. Each widget can be:
- * - Dragged anywhere on screen (click + drag the title bar)
- * - Resized (drag the bottom-right corner)
- * - Closed (X button in the title bar)
- * - Brought to front (click anywhere on the widget)
- * - Stretchy drag animation (iOS 26.5 style)
- * - Ripple + settle on drop
+ * Renders all user-placed widgets as draggable + resizable floating panels.
+ *
+ * Performance: uses refs + rAF for drag/resize (no React state updates per
+ * pointermove frame). State is only committed on pointerup.
  */
 export function WidgetLayer() {
   const widgets = useWidgetStore((s) => s.widgets);
@@ -25,19 +21,8 @@ export function WidgetLayer() {
   const addWidget = useWidgetStore((s) => s.addWidget);
   const [dropRipple, setDropRipple] = useState<{ x: number; y: number; key: number } | null>(null);
 
-  const handleDropNew = (e: React.DragEvent) => {
-    e.preventDefault();
-    const type = e.dataTransfer.getData("text/plain") as WidgetType;
-    if (!type || !WIDGET_DEFAULTS[type]) return;
-    const defaults = WIDGET_DEFAULTS[type];
-    addWidget(type);
-    // Ripple at drop position
-    setDropRipple({ x: e.clientX - 50, y: e.clientY - 50, key: Date.now() });
-  };
-
   return (
     <>
-      {/* Floating widgets */}
       {widgets.map((w) => (
         <DraggableWidget
           key={w.id}
@@ -48,7 +33,6 @@ export function WidgetLayer() {
         />
       ))}
 
-      {/* Ripple effect on widget drop */}
       <AnimatePresence>
         {dropRipple && (
           <motion.div
@@ -63,7 +47,6 @@ export function WidgetLayer() {
         )}
       </AnimatePresence>
 
-      {/* Add widget floating button */}
       <motion.button
         type="button"
         onClick={() => togglePicker(true)}
@@ -79,8 +62,7 @@ export function WidgetLayer() {
         <span className="text-[11px] font-medium text-[var(--text-primary)]">Widgets</span>
       </motion.button>
 
-      {/* iOS 26.5-style widget picker */}
-      <WidgetPickerIOS />
+      <WidgetPickerIOS onDropRipple={(x, y) => setDropRipple({ x, y, key: Date.now() })} />
     </>
   );
 }
@@ -96,19 +78,31 @@ function DraggableWidget({
   onFocus: () => void;
   onClose: () => void;
 }) {
-  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
-  const resizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
+  const elRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
+  const resizeRef = useRef<{ sx: number; sy: number; ow: number; oh: number } | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const pendingRef = useRef<Partial<WidgetInstance> | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
 
+  const applyPending = () => {
+    rafRef.current = null;
+    if (pendingRef.current) {
+      // Directly set the element's position via style for instant visual update
+      const el = elRef.current;
+      if (el) {
+        if (pendingRef.current.x !== undefined) el.style.left = `${pendingRef.current.x}px`;
+        if (pendingRef.current.y !== undefined) el.style.top = `${pendingRef.current.y}px`;
+        if (pendingRef.current.width !== undefined) el.style.width = `${pendingRef.current.width}px`;
+        if (pendingRef.current.height !== undefined) el.style.height = `${pendingRef.current.height}px`;
+      }
+    }
+  };
+
   const handleDragStart = (e: React.PointerEvent) => {
     onFocus();
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      origX: widget.x,
-      origY: widget.y,
-    };
+    dragRef.current = { sx: e.clientX, sy: e.clientY, ox: widget.x, oy: widget.y };
     setIsDragging(true);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     e.stopPropagation();
@@ -116,15 +110,19 @@ function DraggableWidget({
 
   const handleDragMove = (e: React.PointerEvent) => {
     if (!dragRef.current) return;
-    const dx = e.clientX - dragRef.current.startX;
-    const dy = e.clientY - dragRef.current.startY;
-    onUpdate({
-      x: Math.max(0, dragRef.current.origX + dx),
-      y: Math.max(0, dragRef.current.origY + dy),
-    });
+    const dx = e.clientX - dragRef.current.sx;
+    const dy = e.clientY - dragRef.current.sy;
+    const nx = Math.max(0, dragRef.current.ox + dx);
+    const ny = Math.max(0, dragRef.current.oy + dy);
+    pendingRef.current = { x: nx, y: ny };
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(applyPending);
+    }
   };
 
   const handleDragEnd = (e: React.PointerEvent) => {
+    if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    if (pendingRef.current) { onUpdate(pendingRef.current); pendingRef.current = null; }
     dragRef.current = null;
     setIsDragging(false);
     (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
@@ -132,12 +130,7 @@ function DraggableWidget({
 
   const handleResizeStart = (e: React.PointerEvent) => {
     onFocus();
-    resizeRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      origW: widget.width,
-      origH: widget.height,
-    };
+    resizeRef.current = { sx: e.clientX, sy: e.clientY, ow: widget.width, oh: widget.height };
     setIsResizing(true);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     e.stopPropagation();
@@ -145,39 +138,36 @@ function DraggableWidget({
 
   const handleResizeMove = (e: React.PointerEvent) => {
     if (!resizeRef.current) return;
-    const dx = e.clientX - resizeRef.current.startX;
-    const dy = e.clientY - resizeRef.current.startY;
-    onUpdate({
-      width: Math.max(160, resizeRef.current.origW + dx),
-      height: Math.max(120, resizeRef.current.origH + dy),
-    });
+    const dx = e.clientX - resizeRef.current.sx;
+    const dy = e.clientY - resizeRef.current.sy;
+    const nw = Math.max(160, resizeRef.current.ow + dx);
+    const nh = Math.max(120, resizeRef.current.oh + dy);
+    pendingRef.current = { width: nw, height: nh };
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(applyPending);
+    }
   };
 
   const handleResizeEnd = (e: React.PointerEvent) => {
+    if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    if (pendingRef.current) { onUpdate(pendingRef.current); pendingRef.current = null; }
     resizeRef.current = null;
     setIsResizing(false);
     (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
   };
 
+  // Cleanup
+  useRef(() => () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); });
+
   const defaults = WIDGET_DEFAULTS[widget.type];
 
   return (
     <motion.div
+      ref={elRef}
       initial={{ opacity: 0, scale: 0.9 }}
-      animate={{
-        opacity: 1,
-        scale: 1,
-        // Stretchy effect while dragging — slight scale-up + skew for iOS feel
-        ...(isDragging ? { scaleX: 1.03, scaleY: 0.97 } : {}),
-      }}
+      animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      transition={{
-        type: "spring",
-        stiffness: isDragging ? 600 : 300,
-        damping: isDragging ? 20 : 28,
-        // Bounce back on drop
-        ...(isDragging ? {} : { bounce: 0.3 }),
-      }}
+      transition={{ type: "spring", stiffness: 300, damping: 28 }}
       onPointerDown={onFocus}
       className="absolute glass-strong flex flex-col overflow-hidden rounded-xl"
       style={{
@@ -187,14 +177,11 @@ function DraggableWidget({
         height: widget.height,
         zIndex: 50 + widget.zIndex,
         userSelect: isDragging || isResizing ? "none" : "auto",
-        // Stretchy shadow + glow during drag
-        boxShadow: isDragging
-          ? "0 20px 60px rgba(0,0,0,0.4), 0 0 30px var(--neon-soft), inset 0 1px 0 rgba(255,255,255,0.1)"
-          : undefined,
-        transformOrigin: "center",
+        boxShadow: isDragging ? "0 20px 60px rgba(0,0,0,0.4), 0 0 30px var(--neon-soft)" : undefined,
+        willChange: isDragging || isResizing ? "left, top, width, height" : "auto",
       }}
     >
-      {/* Title bar — drag handle */}
+      {/* Title bar */}
       <div
         onPointerDown={handleDragStart}
         onPointerMove={handleDragMove}
@@ -215,29 +202,30 @@ function DraggableWidget({
         </button>
       </div>
 
-      {/* Widget content */}
+      {/* Content */}
       <div className="flex-1 overflow-hidden">
         <WidgetContent type={widget.type} width={widget.width} height={widget.height} />
       </div>
 
-      {/* Resize handle (bottom-right corner) */}
+      {/* Resize handle */}
       <div
         onPointerDown={handleResizeStart}
         onPointerMove={handleResizeMove}
         onPointerUp={handleResizeEnd}
         className="absolute bottom-0 right-0 h-4 w-4 cursor-nwse-resize"
-        style={{
-          background: "linear-gradient(135deg, transparent 50%, var(--neon-soft) 50%)",
-        }}
+        style={{ background: "linear-gradient(135deg, transparent 50%, var(--neon-soft) 50%)" }}
       />
     </motion.div>
   );
 }
 
+// Widget content renderer — import lazily to avoid heavy renders during drag
+import { Minigame2048 } from "./Minigame2048";
+
 function WidgetContent({ type, width, height }: { type: WidgetType; width: number; height: number }) {
   switch (type) {
     case "minigame-2048":
-      return <MinigameWidget />;
+      return <div className="h-full overflow-y-auto scroll-nebula p-2"><Minigame2048 /></div>;
     case "clock":
       return <ClockWidget width={width} height={height} />;
     case "account":
@@ -249,70 +237,29 @@ function WidgetContent({ type, width, height }: { type: WidgetType; width: numbe
   }
 }
 
-// Lazy-load the actual widget contents
-import { Minigame2048 } from "./Minigame2048";
-
-function MinigameWidget() {
-  return (
-    <div className="h-full overflow-y-auto scroll-nebula p-2">
-      <Minigame2048 />
-    </div>
-  );
-}
-
 function ClockWidget({ width, height }: { width: number; height: number }) {
   const [time, setTime] = useState(new Date());
-  // Update every second
   useState(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(interval);
+    const i = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(i);
   });
-
-  const hours = time.getHours();
-  const minutes = time.getMinutes();
-  const seconds = time.getSeconds();
-  const hourAngle = (hours % 12) * 30 + minutes * 0.5;
-  const minuteAngle = minutes * 6;
-  const secondAngle = seconds * 6;
-
   const size = Math.min(width, height) - 20;
-
   return (
     <div className="flex h-full flex-col items-center justify-center p-2">
       <svg width={size} height={size} viewBox="0 0 100 100">
         <circle cx="50" cy="50" r="48" fill="none" stroke="var(--border-glass)" strokeWidth="1" />
-        {[...Array(12)].map((_, i) => {
-          const angle = (i * 30 - 90) * (Math.PI / 180);
-          return (
-            <line
-              key={i}
-              x1={50 + Math.cos(angle) * 42}
-              y1={50 + Math.sin(angle) * 42}
-              x2={50 + Math.cos(angle) * 45}
-              y2={50 + Math.sin(angle) * 45}
-              stroke="var(--text-tertiary)"
-              strokeWidth="1"
-            />
-          );
-        })}
-        <line x1="50" y1="50" x2={50 + Math.cos((hourAngle - 90) * (Math.PI / 180)) * 25} y2={50 + Math.sin((hourAngle - 90) * (Math.PI / 180)) * 25} stroke="var(--text-primary)" strokeWidth="2.5" strokeLinecap="round" />
-        <line x1="50" y1="50" x2={50 + Math.cos((minuteAngle - 90) * (Math.PI / 180)) * 38} y2={50 + Math.sin((minuteAngle - 90) * (Math.PI / 180)) * 38} stroke="var(--text-primary)" strokeWidth="2" strokeLinecap="round" />
-        <line x1="50" y1="50" x2={50 + Math.cos((secondAngle - 90) * (Math.PI / 180)) * 40} y2={50 + Math.sin((secondAngle - 90) * (Math.PI / 180)) * 40} stroke="var(--neon)" strokeWidth="1" strokeLinecap="round" />
+        {[...Array(12)].map((_, i) => { const a = (i*30-90)*(Math.PI/180); return <line key={i} x1={50+Math.cos(a)*42} y1={50+Math.sin(a)*42} x2={50+Math.cos(a)*45} y2={50+Math.sin(a)*45} stroke="var(--text-tertiary)" strokeWidth="1" />; })}
+        <line x1="50" y1="50" x2={50+Math.cos((time.getHours()%12*30+time.getMinutes()*0.5-90)*(Math.PI/180))*25} y2={50+Math.sin((time.getHours()%12*30+time.getMinutes()*0.5-90)*(Math.PI/180))*25} stroke="var(--text-primary)" strokeWidth="2.5" strokeLinecap="round" />
+        <line x1="50" y1="50" x2={50+Math.cos((time.getMinutes()*6-90)*(Math.PI/180))*38} y2={50+Math.sin((time.getMinutes()*6-90)*(Math.PI/180))*38} stroke="var(--text-primary)" strokeWidth="2" strokeLinecap="round" />
+        <line x1="50" y1="50" x2={50+Math.cos((time.getSeconds()*6-90)*(Math.PI/180))*40} y2={50+Math.sin((time.getSeconds()*6-90)*(Math.PI/180))*40} stroke="var(--neon)" strokeWidth="1" strokeLinecap="round" />
         <circle cx="50" cy="50" r="2" fill="var(--neon)" />
       </svg>
-      <div className="mt-1 text-[11px] font-medium text-[var(--text-secondary)]">
-        {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-      </div>
+      <div className="text-[12px] font-medium text-[var(--text-secondary)]">{time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
     </div>
   );
 }
 
 function AccountWidget() {
-  return <AccountWidgetContent />;
-}
-
-function AccountWidgetContent() {
-  // Inline to avoid circular import with NewTabPage
   return (
     <div className="flex h-full flex-col items-center justify-center p-3 text-center">
       <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "var(--neon-soft)" }}>
@@ -325,22 +272,7 @@ function AccountWidgetContent() {
 }
 
 function NotesWidget() {
-  const [notes, setNotes] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem("nebula-notes-widget") || "";
-  });
-
-  const save = (v: string) => {
-    setNotes(v);
-    localStorage.setItem("nebula-notes-widget", v);
-  };
-
-  return (
-    <textarea
-      value={notes}
-      onChange={(e) => save(e.target.value)}
-      placeholder="Quick notes…"
-      className="h-full w-full resize-none bg-transparent p-3 text-[12px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
-    />
-  );
+  const [notes, setNotes] = useState(() => typeof window !== "undefined" ? localStorage.getItem("nebula-notes-widget") || "" : "");
+  const save = (v: string) => { setNotes(v); localStorage.setItem("nebula-notes-widget", v); };
+  return <textarea value={notes} onChange={(e) => save(e.target.value)} placeholder="Quick notes…" className="h-full w-full resize-none bg-transparent p-3 text-[12px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]" />;
 }
