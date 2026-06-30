@@ -98,15 +98,14 @@ function WidgetPreviewCard({
   const CARD_SIZE = 140;
 
   return (
-    <motion.button
-      type="button"
+    <motion.div
       onClick={onPlace}
       initial={{ opacity: 0, y: 10, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ delay, type: "spring", stiffness: 300, damping: 25 }}
       whileHover={{ y: -4, scale: 1.05 }}
       whileTap={{ scale: 0.92 }}
-      className="group relative overflow-hidden rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] transition-colors hover:border-[var(--neon-soft)] hover:shadow-[0_0_20px_var(--neon-soft)]"
+      className="group relative cursor-pointer overflow-hidden rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] transition-colors hover:border-[var(--neon-soft)] hover:shadow-[0_0_20px_var(--neon-soft)]"
       style={{ width: CARD_SIZE, height: CARD_SIZE }}
     >
       {/* Live widget content — scaled to fit */}
@@ -126,7 +125,7 @@ function WidgetPreviewCard({
       <div className="absolute right-1.5 top-1.5 rounded-full bg-black/40 px-1.5 py-0.5 text-[7px] text-white/50 opacity-0 transition-opacity group-hover:opacity-100">
         Click to add
       </div>
-    </motion.button>
+    </motion.div>
   );
 }
 
