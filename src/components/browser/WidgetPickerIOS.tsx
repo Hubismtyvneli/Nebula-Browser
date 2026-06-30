@@ -10,7 +10,7 @@ import { Minigame2048 } from "./Minigame2048";
  * iOS 26.5-style widget picker.
  * Big centered glass frame showing live widget previews.
  * User drags a widget directly out of the frame onto the NTP.
- * No + button — pure drag-and-drop.
+ * All cards are the SAME SIZE (uniform grid) regardless of widget dimensions.
  */
 export function WidgetPickerIOS({ onDropRipple }: { onDropRipple?: (x: number, y: number) => void }) {
   const isOpen = useWidgetStore((s) => s.isPickerOpen);
@@ -34,7 +34,7 @@ export function WidgetPickerIOS({ onDropRipple }: { onDropRipple?: (x: number, y
       {draggingType && (
         <div
           className="fixed inset-0 z-[200]"
-          onDragOver={(e) => e.preventDefault()}
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
           onDrop={handleDrop}
           style={{ background: "rgba(0,0,0,0.3)", backdropFilter: "blur(4px)" }}
         >
@@ -74,7 +74,8 @@ export function WidgetPickerIOS({ onDropRipple }: { onDropRipple?: (x: number, y
               </div>
 
               <div className="max-h-[60vh] overflow-y-auto p-6 scroll-nebula">
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {/* Uniform grid — ALL cards are the same fixed size */}
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                   {(Object.keys(WIDGET_DEFAULTS) as WidgetType[]).map((type) => {
                     const d = WIDGET_DEFAULTS[type];
                     return (
@@ -83,8 +84,6 @@ export function WidgetPickerIOS({ onDropRipple }: { onDropRipple?: (x: number, y
                         type={type}
                         label={d.label}
                         icon={d.icon}
-                        defaultW={d.width}
-                        defaultH={d.height}
                         onDragStart={() => setDraggingType(type)}
                         onDragEnd={() => setDraggingType(null)}
                       />
@@ -108,16 +107,12 @@ function WidgetPreviewCard({
   type,
   label,
   icon,
-  defaultW,
-  defaultH,
   onDragStart,
   onDragEnd,
 }: {
   type: WidgetType;
   label: string;
   icon: string;
-  defaultW: number;
-  defaultH: number;
   onDragStart: () => void;
   onDragEnd: () => void;
 }) {
@@ -128,72 +123,63 @@ function WidgetPreviewCard({
     setIsDragging(true);
     onDragStart();
     if (dragImgRef.current) {
-      e.dataTransfer.setDragImage(dragImgRef.current, defaultW / 2, defaultH / 2);
+      e.dataTransfer.setDragImage(dragImgRef.current, 100, 100);
     }
     e.dataTransfer.effectAllowed = "copy";
     e.dataTransfer.setData("text/plain", type);
   };
 
+  // FIXED: uniform card size — all cards are 140x140px (square)
+  // The live widget preview is scaled to fit inside this fixed box
+  const CARD_SIZE = 140;
+
   return (
-    <motion.div
-      layout
-      animate={{
-        opacity: isDragging ? 0.3 : 1,
-        scale: isDragging ? 0.92 : 1,
-      }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className="group relative"
-    >
-      {/* Preview card — same aspect ratio as the actual widget, scaled to fit */}
+    <div className="group relative flex flex-col items-center">
+      {/* The card — FIXED SIZE, always 140x140 */}
       <div
         draggable
         onDragStart={handleDragStart}
         onDragEnd={() => { setIsDragging(false); onDragEnd(); }}
         className="relative cursor-grab overflow-hidden rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] transition-all hover:border-[var(--neon-soft)] hover:shadow-[0_0_20px_var(--neon-soft)] active:cursor-grabbing"
-        style={{ aspectRatio: `${defaultW} / ${defaultH}` }}
+        style={{ width: CARD_SIZE, height: CARD_SIZE }}
       >
-        {/* Live widget content — scaled to fit the card using CSS transform */}
+        {/* Live widget content — centered and scaled to fit the fixed card */}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
-          <div
-            style={{
-              width: `${defaultW}px`,
-              height: `${defaultH}px`,
-              transform: "scale(var(--preview-scale))",
-              transformOrigin: "center",
-            }}
-          >
+          <div style={{ transform: "scale(0.5)", transformOrigin: "center" }}>
             <LiveWidgetPreview type={type} />
           </div>
         </div>
 
-        {/* Scale: fit the widget into the card (card is ~160px wide) */}
-        <style>{`
-          .group > div:first-child > div > div {
-            --preview-scale: ${Math.min(160 / defaultW, 120 / defaultH)};
-          }
-        `}</style>
-
-        {/* Label */}
-        <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1.5 bg-gradient-to-t from-black/60 to-transparent px-3 py-2">
-          <span className="text-[12px]">{icon}</span>
-          <span className="text-[11px] font-semibold text-white">{label}</span>
+        {/* Label overlay */}
+        <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5">
+          <span className="text-[11px]">{icon}</span>
+          <span className="text-[10px] font-semibold text-white">{label}</span>
         </div>
 
         {/* Drag hint on hover */}
-        <div className="absolute right-2 top-2 rounded-full bg-black/40 px-2 py-0.5 text-[8px] text-white/50 opacity-0 transition-opacity group-hover:opacity-100">
-          Drag to place
+        <div className="absolute right-1.5 top-1.5 rounded-full bg-black/40 px-1.5 py-0.5 text-[7px] text-white/50 opacity-0 transition-opacity group-hover:opacity-100">
+          Drag
         </div>
       </div>
 
-      {/* Hidden drag image — full-size widget */}
+      {/* Hidden drag image — full-size widget for crisp dragging */}
       <div
         ref={dragImgRef}
         className="pointer-events-none fixed -left-[9999px] -top-[9999px] overflow-hidden rounded-xl border border-[var(--neon)] bg-[var(--bg-surface)]"
-        style={{ width: defaultW, height: defaultH }}
+        style={{ width: 200, height: 200 }}
       >
-        <LiveWidgetPreview type={type} />
+        <div className="flex h-full w-full items-center justify-center">
+          <div style={{ transform: "scale(0.7)", transformOrigin: "center" }}>
+            <LiveWidgetPreview type={type} />
+          </div>
+        </div>
       </div>
-    </motion.div>
+
+      {/* Fade the card while dragging */}
+      {isDragging && (
+        <div className="absolute inset-0 rounded-2xl bg-black/40" style={{ width: CARD_SIZE, height: CARD_SIZE }} />
+      )}
+    </div>
   );
 }
 
