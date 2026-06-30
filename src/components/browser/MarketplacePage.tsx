@@ -163,7 +163,7 @@ function WallpaperCard({ wallpaper, isActive, onApply, delay }: { wallpaper: Wal
         {wallpaper.type === "gradient" && wallpaper.gradientCss ? (
           <div className="h-full w-full" style={{ background: wallpaper.gradientCss }} />
         ) : wallpaper.fileUrl ? (
-          wallpaper.type === "animated" ? (
+          (wallpaper.type === "animated" && !wallpaper.fileUrl.toLowerCase().endsWith(".gif")) ? (
             <video src={wallpaper.fileUrl} className="h-full w-full object-cover" muted loop autoPlay playsInline />
           ) : (
             <img src={wallpaper.fileUrl} alt="" className="h-full w-full object-cover" loading="lazy" />

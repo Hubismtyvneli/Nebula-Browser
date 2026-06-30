@@ -57,7 +57,7 @@ export function WallpaperMarketplace() {
     try {
       const supabase = createClient();
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-      const isAnimated = ["mp4", "webm", "gif"].includes(ext);
+      const isAnimated = ["mp4", "webm"].includes(ext);
       const type: WallpaperType = isAnimated ? "animated" : "static";
       const fileId = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
@@ -259,7 +259,7 @@ function WallpaperCard({
       <div className="relative h-24 w-full overflow-hidden">
         {wallpaper.type === "gradient" && wallpaper.gradientCss ? (
           <div className="h-full w-full" style={{ background: wallpaper.gradientCss }} />
-        ) : wallpaper.type === "animated" && wallpaper.fileUrl ? (
+        ) : wallpaper.type === "animated" && wallpaper.fileUrl && !wallpaper.fileUrl.toLowerCase().endsWith(".gif") ? (
           <video
             src={wallpaper.fileUrl}
             className="h-full w-full object-cover"

@@ -17,6 +17,7 @@ import { AuthModal } from "./AuthModal";
 import { WallpaperMarketplace } from "./WallpaperMarketplace";
 import { PluginMarketplace } from "./PluginMarketplace";
 import { DeviceTabsPanel } from "./DeviceTabsPanel";
+import { PluginRuntime } from "./PluginRuntime";
 import { useAuthStore } from "@/lib/auth-store";
 import { useDataSync } from "@/lib/use-data-sync";
 import { useBrowserStore } from "@/lib/browser-store";
@@ -197,6 +198,9 @@ export function BrowserShell() {
 
       {/* Device tabs panel (real-time sync) */}
       <DeviceTabsPanel />
+
+      {/* Plugin runtime — executes enabled plugins (Dark Reader, Screenshot, QR) */}
+      <PluginRuntime />
 
       {/* Status bar */}
       <StatusBar />

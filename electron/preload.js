@@ -41,4 +41,23 @@ contextBridge.exposeInMainWorld("nebulaDesktop", {
     ipcRenderer.on("download-done", handler);
     return () => ipcRenderer.removeListener("download-done", handler);
   },
+
+  // Media playback events — fired when audio/video starts/stops in webviews
+  onMediaPlaying: (callback) => {
+    const handler = (_event, isPlaying) => callback(isPlaying);
+    ipcRenderer.on("media-playing", handler);
+    return () => ipcRenderer.removeListener("media-playing", handler);
+  },
+
+  // Screenshot capture — returns data URL of the current webview
+  captureScreenshot: () => ipcRenderer.invoke("capture-screenshot"),
+
+  // Dark Reader — set flag that gets checked on page load
+  setDarkReader: (enabled) => {
+    if (enabled) {
+      ipcRenderer.send("dark-reader-enable");
+    } else {
+      ipcRenderer.send("dark-reader-disable");
+    }
+  },
 });

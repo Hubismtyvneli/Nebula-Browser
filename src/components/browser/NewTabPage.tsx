@@ -10,6 +10,7 @@ import { normalizeOmniboxInput, searchUrl, prettyUrl } from "@/lib/url";
 import { Favicon } from "./Favicon";
 import { WallpaperBackground } from "./WallpaperBackground";
 import { WidgetLayer } from "./WidgetLayer";
+import { MusicVisualizer } from "./MusicVisualizer";
 
 const QUICK_LINKS = [
   { title: "GitHub",     url: "https://github.com",     favicon: "G", color: "#FFFFFF" },
@@ -248,6 +249,9 @@ export function NewTabPage() {
 
       {/* Draggable + resizable widget layer */}
       <WidgetLayer />
+
+      {/* Music visualizer — shows when audio is playing in a webview */}
+      <MusicVisualizer />
     </div>
   );
 }

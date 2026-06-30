@@ -107,10 +107,53 @@ async function createWindow() {
   });
   ipcMain.on("window-close", () => mainWindow?.close());
   ipcMain.handle("window-is-maximized", () => mainWindow?.isMaximized() ?? false);
+  // Screenshot plugin — capture the active webview as PNG
+  ipcMain.handle("capture-screenshot", async () => {
+    try {
+      // Find the active webview (the one that's visible)
+      const allWebContents = electronApp.getAllWebContents();
+      const webview = allWebContents.find((wc) => wc.getType() === "webview");
+      if (!webview) return { error: "No web page open" };
+      const image = await webview.capturePage();
+      const dataUrl = image.toDataURL();
+      return { dataUrl };
+    } catch (err) {
+      return { error: String(err) };
+    }
+  });
+
   ipcMain.on("open-external", (_event, url) => {
     if (typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://"))) {
       shell.openExternal(url);
     }
+  });
+
+  // Dark Reader plugin — inject/remove dark CSS from all webviews
+  ipcMain.on("dark-reader-enable", () => {
+    const { app: ea } = require("electron");
+    ea.getAllWebContents().forEach((wc) => {
+      if (wc.getType() === "webview") {
+        try {
+          wc.executeJavaScript("window.__nebula_dark_reader = true");
+          wc.insertCSS(`
+            * { background-color: #1a1a1a !important; color: #e0e0e0 !important; border-color: #333 !important; }
+            img, video { filter: brightness(0.8) contrast(1.1) !important; }
+            a { color: #5eb3ff !important; }
+            input, textarea, select { background-color: #2a2a2a !important; color: #e0e0e0 !important; }
+          `);
+        } catch {}
+      }
+    });
+  });
+  ipcMain.on("dark-reader-disable", () => {
+    const { app: ea } = require("electron");
+    ea.getAllWebContents().forEach((wc) => {
+      if (wc.getType() === "webview") {
+        try {
+          wc.executeJavaScript("window.__nebula_dark_reader = false; location.reload()");
+        } catch {}
+      }
+    });
   });
 
   // Notify renderer when maximize state changes (for toggle button UI)
@@ -202,6 +245,32 @@ function setupWebviewContextMenus() {
   electronApp.on("web-contents-created", (event, contents) => {
     // Only attach to webview contents (type === "webview")
     if (contents.getType() !== "webview") return;
+
+    // Media playback detection — notifies renderer when audio starts/stops
+    contents.on("media-started-playing", () => {
+      const target = mainWindow ? mainWindow.webContents : contents;
+      target.send("media-playing", true);
+    });
+    contents.on("media-paused", () => {
+      const target = mainWindow ? mainWindow.webContents : contents;
+      target.send("media-playing", false);
+    });
+
+    // Dark Reader plugin — injects dark mode CSS when enabled
+    contents.on("did-finish-load", () => {
+      try {
+        contents.executeJavaScript("window.__nebula_dark_reader || false").then((enabled) => {
+          if (enabled) {
+            contents.insertCSS(`
+              * { background-color: #1a1a1a !important; color: #e0e0e0 !important; border-color: #333 !important; }
+              img, video { filter: brightness(0.8) contrast(1.1) !important; }
+              a { color: #5eb3ff !important; }
+              input, textarea, select { background-color: #2a2a2a !important; color: #e0e0e0 !important; }
+            `);
+          }
+        }).catch(() => {});
+      } catch {}
+    });
 
     contents.on("context-menu", (e, params) => {
       e.preventDefault();
