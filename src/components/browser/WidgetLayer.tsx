@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useWidgetStore, type WidgetInstance, type WidgetType, WIDGET_DEFAULTS } from "@/lib/widget-store";
 import { WidgetPickerIOS } from "./WidgetPickerIOS";
 
@@ -54,7 +54,7 @@ export function WidgetLayer() {
         transition={{ delay: 0.4 }}
         whileHover={{ scale: 1.08, y: -2 }}
         whileTap={{ scale: 0.92 }}
-        className="fixed bottom-4 left-4 z-[60] flex h-10 items-center gap-2 rounded-full glass-strong px-3"
+        className="fixed bottom-4 left-4 z-[15] flex h-10 items-center gap-2 rounded-full glass-strong px-3"
         title="Add widgets"
       >
         <Plus className="h-4 w-4 text-[var(--neon)]" />
@@ -111,8 +111,9 @@ function DraggableWidget({
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.sx;
     const dy = e.clientY - dragRef.current.sy;
-    const nx = Math.max(0, dragRef.current.ox + dx);
-    const ny = Math.max(0, dragRef.current.oy + dy);
+    // Clamp position so widget can't go off-screen
+    const nx = Math.max(0, Math.min(window.innerWidth - widget.width - 4, dragRef.current.ox + dx));
+    const ny = Math.max(0, Math.min(window.innerHeight - 40, dragRef.current.oy + dy)); // 40px for toolbar
     pendingRef.current = { x: nx, y: ny };
     if (rafRef.current === null) {
       rafRef.current = requestAnimationFrame(applyPending);
@@ -185,7 +186,7 @@ function DraggableWidget({
         top: widget.y,
         width: widget.width,
         height: widget.height,
-        zIndex: 50 + widget.zIndex,
+        zIndex: 10 + widget.zIndex,
         userSelect: isDragging || isResizing ? "none" : "auto",
         boxShadow: isDragging ? "0 30px 80px rgba(0,0,0,0.5), 0 0 40px var(--neon-soft), inset 0 1px 0 rgba(255,255,255,0.1)" : undefined,
         willChange: isDragging || isResizing ? "left, top, transform" : "auto",
@@ -250,10 +251,10 @@ function WidgetContent({ type, width, height }: { type: WidgetType; width: numbe
 
 function ClockWidget({ width, height }: { width: number; height: number }) {
   const [time, setTime] = useState(new Date());
-  useState(() => {
+  useEffect(() => {
     const i = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(i);
-  });
+  }, []);
   const size = Math.min(width, height) - 20;
   return (
     <div className="flex h-full flex-col items-center justify-center p-2">

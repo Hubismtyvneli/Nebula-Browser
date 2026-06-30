@@ -15,7 +15,7 @@ import {
   X,
   Columns2,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useAIStore } from "@/lib/ai-store";
 import { normalizeOmniboxInput, prettyUrl, searchUrl } from "@/lib/url";
@@ -253,9 +253,36 @@ function Omnibox({
 }) {
   const [value, setValue] = useState(url);
   const [isFocused, setIsFocused] = useState(false);
+  const [selectedSuggestion, setSelectedSuggestion] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const history = useBrowserStore((s) => s.history);
+  const bookmarks = useBrowserStore((s) => s.bookmarks);
 
-  // ⌘L focuses omnibox (global shortcut — listens on window)
+  // Build suggestions from history + bookmarks based on current input
+  const suggestions = useMemo(() => {
+    if (!isFocused || !value.trim()) return [];
+    const q = value.toLowerCase().trim();
+    const results: { url: string; title: string; source: "history" | "bookmark" }[] = [];
+    // Search history
+    for (const h of history) {
+      if (h.url.toLowerCase().includes(q) || h.title.toLowerCase().includes(q)) {
+        results.push({ url: h.url, title: h.title, source: "history" });
+      }
+      if (results.length >= 8) break;
+    }
+    // Search bookmarks
+    for (const b of bookmarks) {
+      if (results.length >= 10) break;
+      if (b.url.toLowerCase().includes(q) || b.title.toLowerCase().includes(q)) {
+        if (!results.some((r) => r.url === b.url)) {
+          results.push({ url: b.url, title: b.title, source: "bookmark" });
+        }
+      }
+    }
+    return results;
+  }, [value, isFocused, history, bookmarks]);
+
+  // ⌘L focuses omnibox
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "l") {
@@ -270,6 +297,14 @@ function Omnibox({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // If a suggestion is selected, navigate to it
+    if (selectedSuggestion >= 0 && suggestions[selectedSuggestion]) {
+      const s = suggestions[selectedSuggestion];
+      onNavigate(s.url, s.title);
+      inputRef.current?.blur();
+      setSelectedSuggestion(-1);
+      return;
+    }
     if (!value.trim()) return;
     const parsed = normalizeOmniboxInput(value);
     const finalUrl = parsed.type === "url" ? parsed.value : searchUrl(parsed.value);
@@ -324,12 +359,15 @@ function Omnibox({
           ref={inputRef}
           type="text"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onFocus={(e) => {
-            setIsFocused(true);
-            e.target.select();
+          onChange={(e) => { setValue(e.target.value); setSelectedSuggestion(-1); }}
+          onFocus={(e) => { setIsFocused(true); e.target.select(); }}
+          onBlur={() => { setTimeout(() => { setIsFocused(false); setSelectedSuggestion(-1); }, 150); }}
+          onKeyDown={(e) => {
+            if (suggestions.length === 0) return;
+            if (e.key === "ArrowDown") { e.preventDefault(); setSelectedSuggestion((i) => Math.min(i + 1, suggestions.length - 1)); }
+            else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedSuggestion((i) => Math.max(i - 1, -1)); }
+            else if (e.key === "Escape") { setSelectedSuggestion(-1); inputRef.current?.blur(); }
           }}
-          onBlur={() => setIsFocused(false)}
           placeholder="Search the web or enter a URL — drop a link here"
           className="flex-1 bg-transparent text-[13px] font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
           spellCheck={false}
@@ -350,6 +388,36 @@ function Omnibox({
           </button>
         )}
       </div>
+
+      {/* Search suggestions dropdown */}
+      {isFocused && suggestions.length > 0 && (
+        <div className="glass-strong absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-xl py-1 scroll-nebula">
+          {suggestions.map((s, i) => (
+            <button
+              key={s.url + i}
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onNavigate(s.url, s.title);
+                inputRef.current?.blur();
+              }}
+              onMouseEnter={() => setSelectedSuggestion(i)}
+              className={cn(
+                "flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors",
+                i === selectedSuggestion ? "bg-[var(--neon-soft)]" : "hover:bg-white/5"
+              )}
+            >
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[10px] text-[var(--text-tertiary)]">
+                {s.source === "bookmark" ? "★" : "🕐"}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[12px] font-medium text-[var(--text-primary)]">{s.title}</div>
+                <div className="truncate text-[10px] text-[var(--text-tertiary)]">{s.url}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </form>
   );
 }

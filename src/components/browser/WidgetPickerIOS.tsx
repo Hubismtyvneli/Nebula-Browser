@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useWidgetStore, type WidgetType, WIDGET_DEFAULTS } from "@/lib/widget-store";
 import { Minigame2048 } from "./Minigame2048";
 
@@ -141,7 +141,7 @@ function LiveWidgetPreview({ type }: { type: WidgetType }) {
 
 function ClockPreview() {
   const [time, setTime] = useState(new Date());
-  useState(() => { const i = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(i); });
+  useEffect(() => { const i = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(i); }, []);
   return (
     <div className="flex h-full flex-col items-center justify-center p-2">
       <svg width={180} height={180} viewBox="0 0 100 100">
