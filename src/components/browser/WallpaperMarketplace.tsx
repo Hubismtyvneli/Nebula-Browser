@@ -66,7 +66,12 @@ export function WallpaperMarketplace() {
         .from("wallpapers")
         .upload(fileId, file, { cacheControl: "3600", upsert: false });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        if (uploadError.message.includes("Bucket not found")) {
+          throw new Error("Storage bucket not created yet. Run the SQL migration (0002_wallpapers.sql) in your Supabase dashboard.");
+        }
+        throw uploadError;
+      }
 
       const { data: urlData } = supabase.storage.from("wallpapers").getPublicUrl(fileId);
       const fileUrl = urlData.publicUrl;

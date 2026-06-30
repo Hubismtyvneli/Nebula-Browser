@@ -176,7 +176,12 @@ export function Toolbar() {
         />
         <ToolbarButton
           icon={<MoreHorizontal className="h-4 w-4" />}
-          onClick={() => useBrowserStore.getState().toggleSettings(true)}
+          onClick={() => {
+            const st = useBrowserStore.getState();
+            // Open settings as a full-page tab
+            const tabId = st.newTab();
+            st.navigateTab(tabId, "nebula://settings", "Settings");
+          }}
           label="More"
         />
 

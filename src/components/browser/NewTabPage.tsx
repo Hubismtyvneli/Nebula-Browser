@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sparkles, Search, Code, Languages, FileText, Plus, Clock, Palette } from "lucide-react";
+import { Sparkles, Search, Code, Languages, FileText, Plus, Clock, Palette, Gamepad2, User } from "lucide-react";
 import { useState } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useAIStore } from "@/lib/ai-store";
@@ -9,6 +9,8 @@ import { useWallpaperStore } from "@/lib/wallpaper-store";
 import { normalizeOmniboxInput, searchUrl, prettyUrl } from "@/lib/url";
 import { Favicon } from "./Favicon";
 import { WallpaperBackground } from "./WallpaperBackground";
+import { Minigame2048 } from "./Minigame2048";
+import { useAuthStore } from "@/lib/auth-store";
 
 const QUICK_LINKS = [
   { title: "GitHub",     url: "https://github.com",     favicon: "G", color: "#FFFFFF" },
@@ -230,6 +232,20 @@ export function NewTabPage() {
       )}
       </div>
 
+      {/* Widgets row — minigame + account */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3, duration: 0.3 }}
+        className="mt-8 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2"
+      >
+        {/* 2048 minigame widget */}
+        <Minigame2048 />
+
+        {/* Account / quick actions widget */}
+        <AccountWidget />
+      </motion.div>
+
       {/* Floating wallpaper picker button (bottom-right, Opera GX style) */}
       <motion.button
         type="button"
@@ -244,6 +260,66 @@ export function NewTabPage() {
       >
         <Palette className="h-4 w-4 text-[var(--neon)]" />
       </motion.button>
+    </div>
+  );
+}
+
+function AccountWidget() {
+  const isSignedIn = useAuthStore((s) => s.isSignedIn);
+  const user = useAuthStore((s) => s.user);
+  const openAuthModal = useAuthStore((s) => s.openAuthModal);
+  const newTab = useBrowserStore((s) => s.newTab);
+  const navigateTab = useBrowserStore((s) => s.navigateTab);
+
+  const openAuthTab = () => {
+    const tabId = newTab();
+    navigateTab(tabId, "nebula://auth", "Sign in");
+  };
+
+  const openSettingsTab = () => {
+    const tabId = newTab();
+    navigateTab(tabId, "nebula://settings", "Settings");
+  };
+
+  if (isSignedIn && user) {
+    return (
+      <div className="glass-flat flex flex-col items-center justify-center rounded-2xl p-4 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: "var(--neon-soft)" }}>
+          {user.user_metadata?.avatar_url ? (
+            <img src={user.user_metadata.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+          ) : (
+            <User className="h-5 w-5 text-[var(--neon)]" />
+          )}
+        </div>
+        <div className="mt-2 text-[13px] font-semibold text-[var(--text-primary)]">
+          {user.user_metadata?.name || user.email?.split("@")[0]}
+        </div>
+        <div className="text-[10px] text-[var(--text-tertiary)]">✓ Synced</div>
+        <button
+          type="button"
+          onClick={openSettingsTab}
+          className="mt-3 flex h-8 items-center gap-1.5 rounded-lg bg-white/5 px-3 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+        >
+          Settings
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="glass-flat flex flex-col items-center justify-center rounded-2xl p-4 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: "var(--neon-soft)" }}>
+        <User className="h-5 w-5 text-[var(--neon)]" />
+      </div>
+      <div className="mt-2 text-[13px] font-semibold text-[var(--text-primary)]">Sign in</div>
+      <div className="text-[10px] text-[var(--text-tertiary)]">Sync across devices</div>
+      <button
+        type="button"
+        onClick={openAuthTab}
+        className="mt-3 flex h-8 items-center gap-1.5 rounded-lg bg-[var(--neon-soft)] px-3 text-[11px] font-semibold text-[var(--neon)]"
+      >
+        Sign in
+      </button>
     </div>
   );
 }

@@ -12,6 +12,8 @@ import { classifyFile } from "@/lib/files";
 import { isElectron } from "@/lib/webview-registry";
 import { NewTabPage } from "./NewTabPage";
 import { WebviewView } from "./WebviewView";
+import { SettingsPage } from "./SettingsPage";
+import { AuthPage } from "./AuthPage";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 
@@ -93,6 +95,8 @@ function BackgroundTabContainer({
 /**
  * Renders one tab's content.
  *  - Empty URL              → NewTabPage (Grok-style start page)
+ *  - nebula://settings      → SettingsPage (full-page settings)
+ *  - nebula://auth          → AuthPage (full-page sign-in)
  *  - blob:/data: URL        → LocalFilePreview (dropped files)
  *  - http(s) URL + Electron → WebviewView (REAL web browsing via <webview>)
  *  - http(s) URL + browser  → PagePreview (fallback card — can't iframe most sites)
@@ -106,6 +110,7 @@ function TabContent({ tab }: { tab: Tab | undefined }) {
 
   const url = tab?.url ?? "";
   const isBlob = url.startsWith("blob:") || url.startsWith("data:");
+  const isNebulaUrl = url.startsWith("nebula://");
 
   const handleSummarize = () => {
     setMode("summarize");
@@ -115,6 +120,13 @@ function TabContent({ tab }: { tab: Tab | undefined }) {
 
   if (!tab || !tab.url) {
     return <NewTabPage />;
+  }
+  // Nebula internal pages — render full-page components instead of webviews
+  if (url === "nebula://settings") {
+    return <SettingsPage />;
+  }
+  if (url === "nebula://auth") {
+    return <AuthPage />;
   }
   if (isBlob) {
     return <LocalFilePreview url={url} name={tab.title} onSummarize={handleSummarize} />;
