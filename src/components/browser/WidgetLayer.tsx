@@ -18,7 +18,6 @@ export function WidgetLayer() {
   const bringToFront = useWidgetStore((s) => s.bringToFront);
   const removeWidget = useWidgetStore((s) => s.removeWidget);
   const togglePicker = useWidgetStore((s) => s.togglePicker);
-  const addWidget = useWidgetStore((s) => s.addWidget);
   const [dropRipple, setDropRipple] = useState<{ x: number; y: number; key: number } | null>(null);
 
   return (

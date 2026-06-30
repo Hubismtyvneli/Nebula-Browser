@@ -6,7 +6,6 @@ import { useState } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useAIStore } from "@/lib/ai-store";
 import { useWallpaperStore } from "@/lib/wallpaper-store";
-import { useWidgetStore } from "@/lib/widget-store";
 import { normalizeOmniboxInput, searchUrl, prettyUrl } from "@/lib/url";
 import { Favicon } from "./Favicon";
 import { WallpaperBackground } from "./WallpaperBackground";
@@ -248,20 +247,7 @@ export function NewTabPage() {
         <Palette className="h-4 w-4 text-[var(--neon)]" />
       </motion.button>
 
-      {/* Drop zone for widgets dragged from the picker — covers the whole NTP */}
-      <div
-        className="absolute inset-0 z-[55]"
-        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-        onDrop={(e) => {
-          e.preventDefault();
-          const type = e.dataTransfer.getData("text/plain");
-          if (type) {
-            useWidgetStore.getState().addWidget(type as import("@/lib/widget-store").WidgetType);
-          }
-        }}
-      />
-
-      {/* Draggable + resizable widget layer */}
+      {/* Draggable + resizable widget layer (also handles drop from picker) */}
       <WidgetLayer />
 
       {/* Music visualizer — shows when audio is playing in a webview */}

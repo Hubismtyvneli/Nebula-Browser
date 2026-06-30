@@ -2,104 +2,83 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useWidgetStore, type WidgetType, WIDGET_DEFAULTS } from "@/lib/widget-store";
 import { Minigame2048 } from "./Minigame2048";
 
 /**
  * iOS 26.5-style widget picker.
  * Big centered glass frame showing live widget previews.
- * User drags a widget directly out of the frame onto the NTP.
- * All cards are the SAME SIZE (uniform grid) regardless of widget dimensions.
+ * User clicks a widget to place it on the NTP (HTML5 drag was unreliable
+ * in Electron webviews, so we use click-to-place instead).
  */
 export function WidgetPickerIOS({ onDropRipple }: { onDropRipple?: (x: number, y: number) => void }) {
   const isOpen = useWidgetStore((s) => s.isPickerOpen);
   const toggle = useWidgetStore((s) => s.togglePicker);
   const addWidget = useWidgetStore((s) => s.addWidget);
-  const [draggingType, setDraggingType] = useState<WidgetType | null>(null);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const type = e.dataTransfer.getData("text/plain") as WidgetType;
-    if (!type || !WIDGET_DEFAULTS[type]) { setDraggingType(null); return; }
+  const handlePlace = (type: WidgetType) => {
     addWidget(type);
-    if (onDropRipple) onDropRipple(e.clientX - 50, e.clientY - 50);
-    setDraggingType(null);
+    // Ripple in center of screen
+    if (onDropRipple) {
+      onDropRipple(window.innerWidth / 2 - 50, window.innerHeight / 2 - 50);
+    }
     toggle(false);
   };
 
   return (
-    <>
-      {/* Full-screen drop zone when dragging */}
-      {draggingType && (
-        <div
-          className="fixed inset-0 z-[200]"
-          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-          onDrop={handleDrop}
-          style={{ background: "rgba(0,0,0,0.3)", backdropFilter: "blur(4px)" }}
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[150] flex items-center justify-center p-8"
         >
-          <div className="flex h-full items-center justify-center">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-[14px] font-medium text-white/60">
-              Drop to place widget
-            </motion.div>
-          </div>
-        </div>
-      )}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-lg" onClick={() => toggle(false)} />
 
-      <AnimatePresence>
-        {isOpen && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[150] flex items-center justify-center p-8"
+            initial={{ scale: 0.9, y: 30, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.9, y: 30, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 26 }}
+            className="glass-strong relative w-full max-w-2xl overflow-hidden rounded-3xl"
           >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-lg" onClick={() => toggle(false)} />
-
-            <motion.div
-              initial={{ scale: 0.9, y: 30, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.9, y: 30, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 26 }}
-              className="glass-strong relative w-full max-w-2xl overflow-hidden rounded-3xl"
-            >
-              <div className="flex items-center justify-between border-b border-[var(--border-hairline)] px-6 py-4">
-                <div>
-                  <h2 className="text-[18px] font-semibold text-[var(--text-primary)]">Widgets</h2>
-                  <p className="text-[11px] text-[var(--text-tertiary)]">Drag a widget onto your page</p>
-                </div>
-                <button type="button" onClick={() => toggle(false)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-[var(--text-tertiary)] hover:bg-white/10 hover:text-[var(--text-primary)]">
-                  <X className="h-4 w-4" />
-                </button>
+            <div className="flex items-center justify-between border-b border-[var(--border-hairline)] px-6 py-4">
+              <div>
+                <h2 className="text-[18px] font-semibold text-[var(--text-primary)]">Widgets</h2>
+                <p className="text-[11px] text-[var(--text-tertiary)]">Click a widget to add it to your page</p>
               </div>
+              <button type="button" onClick={() => toggle(false)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-[var(--text-tertiary)] hover:bg-white/10 hover:text-[var(--text-primary)]">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
 
-              <div className="max-h-[60vh] overflow-y-auto p-6 scroll-nebula">
-                {/* Uniform grid — ALL cards are the same fixed size */}
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  {(Object.keys(WIDGET_DEFAULTS) as WidgetType[]).map((type) => {
-                    const d = WIDGET_DEFAULTS[type];
-                    return (
-                      <WidgetPreviewCard
-                        key={type}
-                        type={type}
-                        label={d.label}
-                        icon={d.icon}
-                        onDragStart={() => setDraggingType(type)}
-                        onDragEnd={() => setDraggingType(null)}
-                      />
-                    );
-                  })}
-                </div>
+            <div className="max-h-[60vh] overflow-y-auto p-6 scroll-nebula">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {(Object.keys(WIDGET_DEFAULTS) as WidgetType[]).map((type, i) => {
+                  const d = WIDGET_DEFAULTS[type];
+                  return (
+                    <WidgetPreviewCard
+                      key={type}
+                      type={type}
+                      label={d.label}
+                      icon={d.icon}
+                      onPlace={() => handlePlace(type)}
+                      delay={i * 0.05}
+                    />
+                  );
+                })}
               </div>
+            </div>
 
-              <div className="border-t border-[var(--border-hairline)] px-6 py-3 text-center text-[10px] text-[var(--text-tertiary)]">
-                Drag any widget onto your page — no click needed
-              </div>
-            </motion.div>
+            <div className="border-t border-[var(--border-hairline)] px-6 py-3 text-center text-[10px] text-[var(--text-tertiary)]">
+              Click any widget to place it on your page
+            </div>
           </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -107,79 +86,47 @@ function WidgetPreviewCard({
   type,
   label,
   icon,
-  onDragStart,
-  onDragEnd,
+  onPlace,
+  delay,
 }: {
   type: WidgetType;
   label: string;
   icon: string;
-  onDragStart: () => void;
-  onDragEnd: () => void;
+  onPlace: () => void;
+  delay: number;
 }) {
-  const [isDragging, setIsDragging] = useState(false);
-  const dragImgRef = useRef<HTMLDivElement>(null);
-
-  const handleDragStart = (e: React.DragEvent) => {
-    setIsDragging(true);
-    onDragStart();
-    if (dragImgRef.current) {
-      e.dataTransfer.setDragImage(dragImgRef.current, 100, 100);
-    }
-    e.dataTransfer.effectAllowed = "copy";
-    e.dataTransfer.setData("text/plain", type);
-  };
-
-  // FIXED: uniform card size — all cards are 140x140px (square)
-  // The live widget preview is scaled to fit inside this fixed box
   const CARD_SIZE = 140;
 
   return (
-    <div className="group relative flex flex-col items-center">
-      {/* The card — FIXED SIZE, always 140x140 */}
-      <div
-        draggable
-        onDragStart={handleDragStart}
-        onDragEnd={() => { setIsDragging(false); onDragEnd(); }}
-        className="relative cursor-grab overflow-hidden rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] transition-all hover:border-[var(--neon-soft)] hover:shadow-[0_0_20px_var(--neon-soft)] active:cursor-grabbing"
-        style={{ width: CARD_SIZE, height: CARD_SIZE }}
-      >
-        {/* Live widget content — centered and scaled to fit the fixed card */}
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
-          <div style={{ transform: "scale(0.5)", transformOrigin: "center" }}>
-            <LiveWidgetPreview type={type} />
-          </div>
-        </div>
-
-        {/* Label overlay */}
-        <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5">
-          <span className="text-[11px]">{icon}</span>
-          <span className="text-[10px] font-semibold text-white">{label}</span>
-        </div>
-
-        {/* Drag hint on hover */}
-        <div className="absolute right-1.5 top-1.5 rounded-full bg-black/40 px-1.5 py-0.5 text-[7px] text-white/50 opacity-0 transition-opacity group-hover:opacity-100">
-          Drag
+    <motion.button
+      type="button"
+      onClick={onPlace}
+      initial={{ opacity: 0, y: 10, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay, type: "spring", stiffness: 300, damping: 25 }}
+      whileHover={{ y: -4, scale: 1.05 }}
+      whileTap={{ scale: 0.92 }}
+      className="group relative overflow-hidden rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] transition-colors hover:border-[var(--neon-soft)] hover:shadow-[0_0_20px_var(--neon-soft)]"
+      style={{ width: CARD_SIZE, height: CARD_SIZE }}
+    >
+      {/* Live widget content — scaled to fit */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
+        <div style={{ transform: "scale(0.5)", transformOrigin: "center" }}>
+          <LiveWidgetPreview type={type} />
         </div>
       </div>
 
-      {/* Hidden drag image — full-size widget for crisp dragging */}
-      <div
-        ref={dragImgRef}
-        className="pointer-events-none fixed -left-[9999px] -top-[9999px] overflow-hidden rounded-xl border border-[var(--neon)] bg-[var(--bg-surface)]"
-        style={{ width: 200, height: 200 }}
-      >
-        <div className="flex h-full w-full items-center justify-center">
-          <div style={{ transform: "scale(0.7)", transformOrigin: "center" }}>
-            <LiveWidgetPreview type={type} />
-          </div>
-        </div>
+      {/* Label */}
+      <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5">
+        <span className="text-[11px]">{icon}</span>
+        <span className="text-[10px] font-semibold text-white">{label}</span>
       </div>
 
-      {/* Fade the card while dragging */}
-      {isDragging && (
-        <div className="absolute inset-0 rounded-2xl bg-black/40" style={{ width: CARD_SIZE, height: CARD_SIZE }} />
-      )}
-    </div>
+      {/* Hover hint */}
+      <div className="absolute right-1.5 top-1.5 rounded-full bg-black/40 px-1.5 py-0.5 text-[7px] text-white/50 opacity-0 transition-opacity group-hover:opacity-100">
+        Click to add
+      </div>
+    </motion.button>
   );
 }
 
