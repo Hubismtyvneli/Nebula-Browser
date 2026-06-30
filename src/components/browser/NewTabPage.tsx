@@ -2,15 +2,17 @@
 
 import { motion } from "framer-motion";
 import { Sparkles, Search, Code, Languages, FileText, Plus, Clock, Palette } from "lucide-react";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useBrowserStore } from "@/lib/browser-store";
 import { useAIStore } from "@/lib/ai-store";
 import { useWallpaperStore } from "@/lib/wallpaper-store";
 import { normalizeOmniboxInput, searchUrl, prettyUrl } from "@/lib/url";
 import { Favicon } from "./Favicon";
 import { WallpaperBackground } from "./WallpaperBackground";
-import { WidgetLayer } from "./WidgetLayer";
-import { MusicVisualizer } from "./MusicVisualizer";
+
+// Lazy-load heavy components so the NTP renders instantly
+const WidgetLayer = lazy(() => import("./WidgetLayer").then(m => ({ default: m.WidgetLayer })));
+const MusicVisualizer = lazy(() => import("./MusicVisualizer").then(m => ({ default: m.MusicVisualizer })));
 
 const QUICK_LINKS = [
   { title: "GitHub",     url: "https://github.com",     favicon: "G", color: "#FFFFFF" },
@@ -247,11 +249,11 @@ export function NewTabPage() {
         <Palette className="h-4 w-4 text-[var(--neon)]" />
       </motion.button>
 
-      {/* Draggable + resizable widget layer (also handles drop from picker) */}
-      <WidgetLayer />
-
-      {/* Music visualizer — shows when audio is playing in a webview */}
-      <MusicVisualizer />
+      {/* Draggable + resizable widget layer (lazy-loaded) */}
+      <Suspense fallback={null}>
+        <WidgetLayer />
+        <MusicVisualizer />
+      </Suspense>
     </div>
   );
 }

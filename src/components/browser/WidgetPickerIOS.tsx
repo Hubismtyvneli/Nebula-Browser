@@ -19,7 +19,7 @@ export function WidgetPickerIOS({ onDropRipple }: { onDropRipple?: (x: number, y
 
   const handlePlace = (type: WidgetType) => {
     addWidget(type);
-    // Ripple in center of screen
+    // Dynamic Island ripple — expands from center of the picker frame
     if (onDropRipple) {
       onDropRipple(window.innerWidth / 2 - 50, window.innerHeight / 2 - 50);
     }

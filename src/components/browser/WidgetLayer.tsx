@@ -164,9 +164,20 @@ function DraggableWidget({
     <motion.div
       ref={elRef}
       initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
+      animate={{
+        opacity: 1,
+        scale: 1,
+        // Ragdoll stretch: bottom lags behind top during drag (iOS jelly feel)
+        ...(isDragging ? { scaleY: 0.96, scaleX: 1.04 } : {}),
+      }}
       exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ type: "spring", stiffness: 300, damping: 28 }}
+      transition={{
+        type: "spring",
+        stiffness: isDragging ? 400 : 300,
+        damping: isDragging ? 18 : 28,
+        // Bounce back hard on release for the "snap" effect
+        ...(isDragging ? {} : { bounce: 0.15 }),
+      }}
       onPointerDown={onFocus}
       className="absolute glass-strong flex flex-col overflow-hidden rounded-xl"
       style={{
@@ -176,8 +187,9 @@ function DraggableWidget({
         height: widget.height,
         zIndex: 50 + widget.zIndex,
         userSelect: isDragging || isResizing ? "none" : "auto",
-        boxShadow: isDragging ? "0 20px 60px rgba(0,0,0,0.4), 0 0 30px var(--neon-soft)" : undefined,
-        willChange: isDragging || isResizing ? "left, top, width, height" : "auto",
+        boxShadow: isDragging ? "0 30px 80px rgba(0,0,0,0.5), 0 0 40px var(--neon-soft), inset 0 1px 0 rgba(255,255,255,0.1)" : undefined,
+        willChange: isDragging || isResizing ? "left, top, transform" : "auto",
+        transformOrigin: "top center",
       }}
     >
       {/* Title bar */}

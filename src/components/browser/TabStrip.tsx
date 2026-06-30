@@ -58,7 +58,7 @@ function TabPill({ tab, active, isSplit, onClick, onClose }: TabPillProps) {
         scale: 0.92,
         transition: { duration: 0.12, ease: "easeOut" },
       }}
-      transition={transition ?? { type: "spring", stiffness: 500, damping: 35, mass: 0.7 }}
+      transition={transition ?? { type: "spring", stiffness: 500, damping: 40, mass: 0.6 }}
       whileHover={isDragging ? undefined : { y: -1, transition: { duration: 0.15 } }}
       whileTap={isDragging ? undefined : { scale: 0.97, transition: { duration: 0.1 } }}
       style={{
