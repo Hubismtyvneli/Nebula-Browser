@@ -19,11 +19,20 @@ export interface Conversation {
   createdAt: number;
 }
 
+export interface PageContext {
+  url: string;
+  title: string;
+  description?: string;
+  textPreview?: string;
+  headings?: string[];
+}
+
 interface AIState {
   conversations: Conversation[];
   activeConversationId: string | null;
   mode: AIMode;
   isThinking: boolean;
+  currentPageContext: PageContext | null;
 
   newConversation: () => string;
   setActiveConversation: (id: string) => void;
@@ -32,6 +41,7 @@ interface AIState {
   finishMessage: (convId: string, msgId: string, opts?: { error?: boolean }) => void;
   setMode: (m: AIMode) => void;
   setThinking: (v: boolean) => void;
+  setPageContext: (ctx: PageContext | null) => void;
   renameConversation: (id: string, title: string) => void;
   clearConversation: (id: string) => void;
 }
@@ -45,6 +55,7 @@ export const useAIStore = create<AIState>()(
       activeConversationId: null,
       mode: "chat",
       isThinking: false,
+      currentPageContext: null,
 
       newConversation: () => {
         const c: Conversation = {
@@ -101,6 +112,7 @@ export const useAIStore = create<AIState>()(
         })),
       setMode: (m) => set({ mode: m }),
       setThinking: (v) => set({ isThinking: v }),
+      setPageContext: (ctx) => set({ currentPageContext: ctx }),
       renameConversation: (id, title) =>
         set((s) => ({
           conversations: s.conversations.map((c) =>

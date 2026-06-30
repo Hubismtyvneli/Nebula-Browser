@@ -117,9 +117,21 @@ export function AISidebar() {
           body: JSON.stringify({
             messages,
             mode,
-            context: activeTab?.url
-              ? { url: activeTab.url, title: activeTab.title }
-              : undefined,
+            context: (() => {
+              const pageCtx = useAIStore.getState().currentPageContext;
+              if (pageCtx) {
+                return {
+                  url: pageCtx.url,
+                  title: pageCtx.title,
+                  description: pageCtx.description,
+                  textPreview: pageCtx.textPreview,
+                  headings: pageCtx.headings,
+                };
+              }
+              return activeTab?.url
+                ? { url: activeTab.url, title: activeTab.title }
+                : undefined;
+            })(),
           }),
           signal: controller.signal,
         });
@@ -465,7 +477,9 @@ export function AISidebar() {
               {activeTab?.url && (
                 <span className="flex items-center gap-1 text-[9px] text-[var(--neon)]">
                   <Zap className="h-2.5 w-2.5" />
-                  Context: {activeTab.title.slice(0, 18)}
+                  {useAIStore.getState().currentPageContext?.textPreview
+                    ? "Page read ✓ — AI can see this page"
+                    : `Context: ${activeTab.title.slice(0, 18)}`}
                 </span>
               )}
             </div>

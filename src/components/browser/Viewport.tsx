@@ -14,6 +14,8 @@ import { NewTabPage } from "./NewTabPage";
 import { WebviewView } from "./WebviewView";
 import { SettingsPage } from "./SettingsPage";
 import { AuthPage } from "./AuthPage";
+import { MarketplacePage } from "./MarketplacePage";
+import { ProfilePage } from "./ProfilePage";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 
@@ -127,6 +129,12 @@ function TabContent({ tab }: { tab: Tab | undefined }) {
   }
   if (url === "nebula://auth") {
     return <AuthPage />;
+  }
+  if (url === "nebula://marketplace" || url.startsWith("nebula://marketplace/")) {
+    return <MarketplacePage />;
+  }
+  if (url === "nebula://profile") {
+    return <ProfilePage />;
   }
   if (isBlob) {
     return <LocalFilePreview url={url} name={tab.title} onSummarize={handleSummarize} />;

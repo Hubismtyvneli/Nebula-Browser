@@ -11,7 +11,7 @@ interface ChatMessage {
 
 interface RequestBody {
   messages: ChatMessage[];
-  context?: { url?: string; title?: string; description?: string };
+  context?: { url?: string; title?: string; description?: string; textPreview?: string; headings?: string[] };
   mode?: "chat" | "summarize" | "translate" | "code";
 }
 
@@ -46,6 +46,12 @@ function buildSystemPrompt(body: RequestBody): string {
       `Current page URL: ${body.context.url}`,
       body.context.title ? `Page title: ${body.context.title}` : null,
       body.context.description ? `Page description: ${body.context.description}` : null,
+      body.context.textPreview
+        ? `Page content (first 3000 chars):\n${body.context.textPreview}`
+        : null,
+      body.context.headings?.length
+        ? `Page headings: ${body.context.headings.join(" | ")}`
+        : null,
     ]
       .filter(Boolean)
       .join("\n");

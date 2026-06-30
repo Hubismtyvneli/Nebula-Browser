@@ -72,6 +72,31 @@ export function WebviewView({ tabId, url, initialTitle }: WebviewViewProps) {
     const onLoadingStop = () => {
       setIsLoading(false);
       setTabStatus(tabId, "idle");
+      // Extract page content for AI awareness — inject a script that reads
+      // the visible text, headings, and meta tags, then sends them to the AI store
+      try {
+        wv.executeJavaScript(`
+          (function() {
+            var meta = document.querySelector('meta[name="description"]');
+            var headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(function(h) { return h.innerText.trim(); }).filter(Boolean).slice(0, 10);
+            var text = document.body ? document.body.innerText.replace(/\\s+/g, ' ').trim().slice(0, 3000) : '';
+            return JSON.stringify({
+              url: window.location.href,
+              title: document.title,
+              description: meta ? meta.content : '',
+              textPreview: text,
+              headings: headings
+            });
+          })()
+        `).then((result: string) => {
+          if (result) {
+            try {
+              const ctx = JSON.parse(result);
+              useAIStore.getState().setPageContext(ctx);
+            } catch { /* ignore parse errors */ }
+          }
+        }).catch(() => { /* ignore injection errors */ });
+      } catch { /* webview not ready */ }
     };
     const onTitleUpdated = (e: Event) => {
       const ev = e as unknown as { title: string };
